@@ -1,0 +1,24 @@
+# ============================================================
+# SSK Store - Robots.txt
+# Shree Sahajanand Sahitya Kendra (Kalakunj Mandir, Surat)
+# ============================================================
+
+User-agent: *
+Allow: /
+Allow: /assets/
+Allow: /catalog.php
+Allow: /product.php
+Allow: /pages.php
+Allow: /index.php
+
+# Disallow private user flows, checkout, auth, and admin
+Disallow: /admin/
+Disallow: /api/
+Disallow: /cart.php
+Disallow: /checkout.php
+Disallow: /account.php
+Disallow: /order-success.php
+Disallow: /*?*q=
+Disallow: /*?*action=
+
+Sitemap: /sitemap.xml
