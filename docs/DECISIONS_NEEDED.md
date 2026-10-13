@@ -1,0 +1,16 @@
+# Decisions Needed & Safe Defaults — SSK Store
+
+This document records architectural, business, and operational decisions required from the project owner, along with the safe defaults adopted in accordance with Section 12 of `MASTER_PROMPT_ANTIGRAVITY.md`.
+
+---
+
+| # | Decision Item | Context | Recommended Safe Default (Active) | Owner Action Required |
+|---|---|---|---|---|
+| **D-1** | **Payment Gateway Integration** | Checkout currently lists "Card" and "NetBanking", but no gateway adapter or merchant credentials exist. | **Default to UPI & COD only.** Provide UPI QR + Deep Link (`upi://pay`) + UTR confirmation form. Remove misleading Card/NetBanking buttons from frontend. Prepare modular Razorpay gateway adapter ready behind an environment variable flag. | Confirm if Razorpay or other gateway keys will be provided. If not, UPI + COD will be the production payment stack. |
+| **D-2** | **Temple UPI ID Verification** | `STORE_UPI_ID` is set to `9426551098@upi` and phone is `+91 9426-55-1098`. | Keep `9426551098@upi` as the default in config. | **Verify with a ₹1 live payment** that this VPA is active and belongs to the Kalakunj Mandir trust account. |
+| **D-3** | **Transactional Email & SMTP** | Site claims order confirmations and tracking emails are sent, but no mailing code exists. | **PHPMailer with SMTP credentials via ENV.** If no SMTP credentials are provided, fall back to writing sent emails safely to `logs/mail.log` without breaking orders or user flows. | Provide SMTP host, port, username, password, and sender address for `contact@sskstore.in`. |
+| **D-4** | **Clean URL Routing Strategy** | Search engines currently see query-string URLs (`/product.php?id=1`), and canonical tags are broken. | **Clean URLs with 301 redirects:** `/product/{slug}-{id}`, `/shop/{dept-slug}`, `/page/{slug}` with backwards-compatible 301 redirects from old `.php` URLs. | Approved by default (Section 12). |
+| **D-5** | **Storefront Bilingual Language Support** | Devotees and customers speak Gujarati and English. | **Bilingual EN / ગુજરાતી toggle on storefront**; Admin dashboard remains clean English. | Approved by default (Section 12). |
+| **D-6** | **Android App Architecture** | `android-app/` contains a plain WebView wrapper with hardcoded emulator IP and BAPS package ID. | **Keep & harden the Android WebView app:** rename package to `in.sskstore.app`, secure origins, fix intent routing (UPI/WhatsApp/tel), disable cleartext in release, parameterize URLs via build variants. Document TWA alternative. | Approve package name `in.sskstore.app` and Play Store release strategy. |
+| **D-7** | **Edge CDN & Caching** | Performance targets require fast photo delivery on 4G in Gujarat. | **Document free Cloudflare setup** without hard dependencies. Provide `.htaccess` and Nginx caching and compression directives. | Enable Cloudflare (Brotli, HTTP/3, Edge Cache) on DNS when publishing live. |
+| **D-8** | **High-Value COD Abuse Prevention** | Risk of fake orders on expensive items (e.g., ₹4,999 Ghar Mandirs). | **Cap COD orders at ₹3,000 maximum**; require UPI payment or WhatsApp confirmation for orders exceeding this threshold. | Review threshold limit (₹3,000 recommended). |
