@@ -90,10 +90,19 @@ require_once __DIR__ . '/includes/header.php';
     <button class="slider-arrow-btn slider-arrow-prev" aria-label="Previous Slide">&lsaquo;</button>
     <button class="slider-arrow-btn slider-arrow-next" aria-label="Next Slide">&rsaquo;</button>
 
-    <?php foreach ($banners as $idx => $b): ?>
+    <?php foreach ($banners as $idx => $b): 
+      $imgSrc = $b['image'];
+      $webpSrc = preg_replace('/\.(jpe?g|png)$/i', '.webp', $imgSrc);
+      $hasWebp = file_exists(ROOT_PATH . ltrim($webpSrc, '/'));
+    ?>
       <div class="slide <?= $idx === 0 ? 'active' : '' ?>">
         <a href="<?= htmlspecialchars(!empty($b['link']) ? $b['link'] : 'catalog.php') ?>" class="slide-link">
-          <img src="<?= htmlspecialchars($b['image']) ?>" alt="<?= htmlspecialchars($b['title'] ?? 'SSK Store Banner') ?>" class="hero-banner-img" <?= $idx === 0 ? 'fetchpriority="high"' : 'loading="lazy"' ?>>
+          <picture>
+            <?php if ($hasWebp): ?>
+              <source type="image/webp" srcset="<?= htmlspecialchars($webpSrc) ?>">
+            <?php endif; ?>
+            <img src="<?= htmlspecialchars($imgSrc) ?>" alt="<?= htmlspecialchars($b['title'] ?? 'SSK Store Banner') ?>" class="hero-banner-img" <?= $idx === 0 ? 'fetchpriority="high"' : 'loading="lazy" decoding="async"' ?>>
+          </picture>
         </a>
       </div>
     <?php endforeach; ?>
@@ -160,7 +169,7 @@ require_once __DIR__ . '/includes/header.php';
               <?php elseif ($product['is_featured']): ?>
                 <span class="baps-product-badge featured">New</span>
               <?php endif; ?>
-              <img src="<?= $imgUrl ?>" alt="<?= htmlspecialchars($product['name']) ?>" loading="lazy">
+              <img src="<?= $imgUrl ?>" alt="<?= htmlspecialchars($product['name']) ?>" loading="lazy" decoding="async" width="200" height="200">
             </div>
 
             <div class="baps-product-info">

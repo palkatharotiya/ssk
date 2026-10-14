@@ -4,8 +4,7 @@
    Single Source of Truth for Storefront & Admin Portals
    ============================================================ */
 
-/* 1. Google Fonts: English (Plus Jakarta Sans) + Gujarati (Noto Sans Gujarati) + Devanagari */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Sans+Gujarati:wght@400;500;600;700&family=Plus+Jakarta+Sans:ital,wght@0,400..800;1,400..800&display=swap');
+/* 1. Typography configured via non-blocking <link> in header.php */
 
 /* ============================================================
    2. DESIGN TOKENS

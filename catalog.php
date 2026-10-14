@@ -230,7 +230,7 @@ require_once __DIR__ . '/includes/header.php';
                 </button>
 
                 <a href="product.php?id=<?= $product['id'] ?>">
-                  <img src="<?= $imgUrl ?>" alt="<?= htmlspecialchars($product['name']) ?>" loading="lazy">
+                  <?= render_picture($product['image'] ?? '', $product['name'], ['width' => 300, 'height' => 300, 'loading' => 'lazy']) ?>
                 </a>
               </div>
 

@@ -125,6 +125,11 @@ $ogImage = $ogImage ?? (SITE_URL . '/assets/brand/logo.png');
     })();
   </script>
 
+  <!-- Preconnect and non-blocking Web Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Sans+Gujarati:wght@400;500;600;700&family=Outfit:wght@400;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,400..800;1,400..800&display=swap">
+
   <link rel="stylesheet" href="assets/css/theme.css?v=<?= file_exists(ROOT_PATH . 'assets/css/theme.css') ? filemtime(ROOT_PATH . 'assets/css/theme.css') : 1 ?>">
   <link rel="stylesheet" href="assets/css/style.css?v=<?= file_exists(ROOT_PATH . 'assets/css/style.css') ? filemtime(ROOT_PATH . 'assets/css/style.css') : 1 ?>">
 </head>
@@ -151,7 +156,10 @@ $ogImage = $ogImage ?? (SITE_URL . '/assets/brand/logo.png');
 
       <!-- Brand Logo -->
       <a href="index.php" class="brand-logo" title="Shri Sahajanand Sahitya Kendra — Kalakunj Mandir, Surat">
-        <img src="assets/brand/logo.png" alt="Shri Sahajanand Sahitya Kendra - Kalakunj Mandir" class="brand-logo-img" width="151" height="56" fetchpriority="high">
+        <picture>
+          <source type="image/webp" srcset="assets/brand/logo.webp">
+          <img src="assets/brand/logo.png" alt="Shri Sahajanand Sahitya Kendra - Kalakunj Mandir" class="brand-logo-img" width="151" height="56" fetchpriority="high">
+        </picture>
       </a>
 
       <!-- Search Bar with Live Suggestions -->

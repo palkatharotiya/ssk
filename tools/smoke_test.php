@@ -107,6 +107,15 @@ try {
 }
 assert_test("Unauthenticated admin access is recognized as unlogged", $adminGateBlocked);
 
+// Phase 4: Speed & Mobile Image Pipeline Tests
+assert_test("Speed: function render_picture() exists", function_exists('render_picture'));
+assert_test("Speed: function generate_image_variant() exists", function_exists('generate_image_variant'));
+assert_test("Speed: function asset_url() exists", function_exists('asset_url'));
+$cssAssetUrl = asset_url('assets/css/theme.css');
+assert_test("Speed: asset_url appends filemtime cache-busting query parameter", strpos($cssAssetUrl, '?v=') !== false);
+$renderedPic = render_picture('non_existent_img.jpg', 'Test Alt', ['width' => 300, 'height' => 300]);
+assert_test("Speed: render_picture fallback outputs valid img tag with dimensions", strpos($renderedPic, '<img') !== false && strpos($renderedPic, 'width="300"') !== false);
+
 echo "\n----------------------------------------------------\n";
 echo " Test Results: Passed: {$passed} | Failed: {$failed}\n";
 echo "====================================================\n";

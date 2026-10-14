@@ -253,9 +253,9 @@
   <div class="toast-container"></div>
 
   <!-- Theme Switcher, PWA Engine & Main JavaScript Files -->
-  <script src="assets/js/theme-toggle.js"></script>
-  <script src="assets/js/pwa-strings.js"></script>
-  <script src="assets/js/pwa-install.js"></script>
-  <script src="assets/js/main.js"></script>
+  <script src="<?= asset_url('assets/js/theme-toggle.js') ?>"></script>
+  <script src="<?= asset_url('assets/js/pwa-strings.js') ?>"></script>
+  <script src="<?= asset_url('assets/js/pwa-install.js') ?>"></script>
+  <script src="<?= asset_url('assets/js/main.js') ?>"></script>
 </body>
 </html>

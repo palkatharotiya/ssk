@@ -1,11 +1,13 @@
 <?php
 /**
- * BAPS Store - Core Functions & Helpers
+ * SSK Store - Core Functions & Helpers
+ * Shri Sahajanand Sahitya Kendra (Kalakunj Mandir, Surat)
  */
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/form_helpers.php';
+require_once __DIR__ . '/images.php';
 
 // Flash Messages
 function set_flash(string $arg1, string $arg2 = ''): void {
@@ -707,3 +709,18 @@ function get_product_image_url(?string $imageFilename, string $productName = '')
     $nameEncoded = urlencode($productName ?: 'SSK Store');
     return ASSETS_URL . '/images/placeholder.php?title=' . $nameEncoded;
 }
+
+/**
+ * Generates an asset URL with filemtime cache-busting query parameter.
+ * Prevents stale caches on mobile devices and aggressive CDNs/browsers.
+ */
+function asset_url(string $relativePath): string {
+    $trimmed = ltrim($relativePath, '/');
+    $filePath = ROOT_PATH . $trimmed;
+    $url = SITE_URL . '/' . $trimmed;
+    if (file_exists($filePath)) {
+        return $url . '?v=' . filemtime($filePath);
+    }
+    return $url;
+}
+

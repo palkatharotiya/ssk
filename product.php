@@ -1,6 +1,7 @@
 <?php
 /**
- * BAPS Store - Product Detail Page
+ * SSK Store - Product Detail Page
+ * Shri Sahajanand Sahitya Kendra (Kalakunj Mandir, Surat)
  */
 
 require_once __DIR__ . '/includes/config.php';
@@ -63,7 +64,13 @@ require_once __DIR__ . '/includes/header.php';
     <!-- Image Gallery -->
     <div class="product-gallery">
       <div class="main-img-box">
-        <img src="<?= $imgUrl ?>" alt="<?= htmlspecialchars($product['name']) ?>" id="product-main-img">
+        <?= render_picture($product['image'] ?? '', $product['name'], [
+          'id' => 'product-main-img',
+          'width' => 600,
+          'height' => 600,
+          'loading' => 'eager',
+          'fetchpriority' => 'high'
+        ]) ?>
       </div>
     </div>
 
@@ -187,7 +194,7 @@ require_once __DIR__ . '/includes/header.php';
           <article class="product-card">
             <div class="card-img-wrap">
               <a href="product.php?id=<?= $rel['id'] ?>">
-                <img src="<?= $rImg ?>" alt="<?= htmlspecialchars($rel['name']) ?>" loading="lazy">
+                <?= render_picture($rel['image'] ?? '', $rel['name'], ['width' => 300, 'height' => 300, 'loading' => 'lazy']) ?>
               </a>
             </div>
             <div class="card-body">

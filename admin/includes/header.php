@@ -38,8 +38,8 @@ $currentPage = basename($_SERVER['PHP_SELF'] ?? '');
     })();
   </script>
 
-  <link rel="stylesheet" href="../assets/css/theme.css">
-  <link rel="stylesheet" href="css/admin.css">
+  <link rel="stylesheet" href="../assets/css/theme.css?v=<?= file_exists(ROOT_PATH . 'assets/css/theme.css') ? filemtime(ROOT_PATH . 'assets/css/theme.css') : 1 ?>">
+  <link rel="stylesheet" href="css/admin.css?v=<?= file_exists(__DIR__ . '/../css/admin.css') ? filemtime(__DIR__ . '/../css/admin.css') : 1 ?>">
 </head>
 <body>
 
