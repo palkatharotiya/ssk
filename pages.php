@@ -6,6 +6,7 @@
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/security.php';
 
 $slug = $_GET['slug'] ?? 'about-us';
 $page = db_fetch_one("SELECT * FROM pages WHERE slug = ? AND is_active = 1", [$slug]);
@@ -20,8 +21,13 @@ $contactError = '';
 
 // Handle Contact Message POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $slug === 'contact-us') {
-    if (!verify_csrf_token($_POST['csrf_token'] ?? '')) {
-        $contactError = 'Security token expired. Please refresh the page and try again.';
+    require_csrf();
+
+    // Honeypot check (Bots fill out hidden fields)
+    if (!empty($_POST['website_url_hp'])) {
+        $contactSuccess = true;
+    } elseif (!check_rate_limit('contact_form', 3, 300)) {
+        $contactError = 'Too many messages sent. Please wait 5 minutes before submitting another inquiry.';
     } else {
         $name = trim($_POST['name'] ?? '');
         $email = trim($_POST['email'] ?? '');
@@ -68,7 +74,7 @@ require_once __DIR__ . '/includes/header.php';
 
     <!-- CMS HTML Content -->
     <div style="color: var(--text); font-size: 1rem; line-height: 1.8;">
-      <?= $page['content'] ?>
+      <?= strip_tags((string)$page['content'], '<h2><h3><h4><p><strong><b><em><i><u><ul><ol><li><a><br><hr>') ?>
     </div>
 
     <!-- Contact Form (if Contact Us page) -->
@@ -90,6 +96,9 @@ require_once __DIR__ . '/includes/header.php';
 
         <form method="POST" action="pages.php?slug=contact-us">
           <?= csrf_field() ?>
+          <div style="display: none;" aria-hidden="true">
+            <input type="text" name="website_url_hp" tabindex="-1" autocomplete="off">
+          </div>
 
           <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
             Fields marked with <span style="color: var(--red-text); font-weight: bold;">*</span> are required.

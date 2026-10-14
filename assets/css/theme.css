@@ -1697,3 +1697,43 @@ main.container {
   padding: 0 10px;
 }
 
+/* Mobile 360px Safe Viewport Rules (Task 3.14) */
+@media (max-width: 420px) {
+  .container {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+  .ui-card {
+    padding: 16px 12px !important;
+  }
+  .ui-card-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .ui-page-title {
+    font-size: 1.45rem !important;
+  }
+  .product-detail-actions {
+    flex-direction: column !important;
+  }
+  .product-detail-actions .btn {
+    width: 100% !important;
+  }
+  .cart-table th, .cart-table td {
+    padding: 8px 4px !important;
+    font-size: 0.8125rem !important;
+  }
+  .admin-header-nav {
+    gap: 0.25rem;
+  }
+  .admin-table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .mobile-summary-toggle {
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
+
+

@@ -63,6 +63,10 @@ define('UPLOADS_URL', SITE_URL . '/uploads');
 
 // Secure Session Cookie Configuration
 if (session_status() === PHP_SESSION_NONE) {
+    ini_set('session.use_strict_mode', '1');
+    ini_set('session.cookie_httponly', '1');
+    session_name('SSK_SESSID');
+
     if (PHP_VERSION_ID >= 70300) {
         session_set_cookie_params([
             'lifetime' => 0,
@@ -75,7 +79,14 @@ if (session_status() === PHP_SESSION_NONE) {
     } else {
         session_set_cookie_params(0, '/; samesite=Lax', '', $isHttps, true);
     }
-    session_start();
+
+    // Skip session startup on pure static media/asset generators unless a session cookie already exists
+    $scriptName = basename($_SERVER['SCRIPT_NAME'] ?? '');
+    $isStaticEndpoint = in_array($scriptName, ['placeholder.php', 'sitemap.xml.php', 'robots.txt.php'], true);
+
+    if (!$isStaticEndpoint || isset($_COOKIE['SSK_SESSID']) || isset($_COOKIE['PHPSESSID'])) {
+        session_start();
+    }
 }
 
 // Error reporting: Log errors to file and hide from public view in production

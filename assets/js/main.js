@@ -13,6 +13,21 @@ document.addEventListener('DOMContentLoaded', () => {
     initBackToTop();
 });
 
+// Safe HTML Escaping Helper (XSS Prevention)
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/[&<>"']/g, function(m) {
+        switch (m) {
+            case '&': return '&amp;';
+            case '<': return '&lt;';
+            case '>': return '&gt;';
+            case '"': return '&quot;';
+            case "'": return '&#039;';
+            default: return m;
+        }
+    });
+}
+
 // Toast Notifications
 function showToast(message, type = 'success') {
     let container = document.querySelector('.toast-container');
@@ -29,7 +44,10 @@ function showToast(message, type = 'success') {
     if (type === 'error') icon = '✕';
     if (type === 'info') icon = 'ℹ';
 
-    toast.innerHTML = `<span style="font-weight: bold;">${icon}</span> <span>${message}</span>`;
+    const textSpan = document.createElement('span');
+    textSpan.textContent = String(message || '');
+    toast.innerHTML = `<span style="font-weight: bold;">${icon}</span> `;
+    toast.appendChild(textSpan);
     container.appendChild(toast);
 
     setTimeout(() => {
@@ -64,17 +82,17 @@ function initHeaderSearch() {
                 .then(data => {
                     if (data.results && data.results.length > 0) {
                         suggestionsBox.innerHTML = data.results.map(item => `
-                            <div class="suggestion-item" onclick="window.location.href='product.php?id=${item.id}'">
-                                <img src="${item.image_url}" class="suggestion-img" alt="${item.name}">
+                            <div class="suggestion-item" onclick="window.location.href='product.php?id=${encodeURIComponent(item.id)}'">
+                                <img src="${escapeHtml(item.image_url)}" class="suggestion-img" alt="${escapeHtml(item.name)}">
                                 <div class="suggestion-info">
-                                    <div class="suggestion-title">${item.name}</div>
-                                    <div class="suggestion-price">${item.formatted_price}</div>
+                                    <div class="suggestion-title">${escapeHtml(item.name)}</div>
+                                    <div class="suggestion-price">${escapeHtml(item.formatted_price)}</div>
                                 </div>
                             </div>
                         `).join('');
                         suggestionsBox.classList.add('active');
                     } else {
-                        suggestionsBox.innerHTML = `<div style="padding: 1rem; color: #71717a; font-size: 0.875rem;">No products found for "${q}"</div>`;
+                        suggestionsBox.innerHTML = `<div style="padding: 1rem; color: #71717a; font-size: 0.875rem;">No products found for "${escapeHtml(q)}"</div>`;
                         suggestionsBox.classList.add('active');
                     }
                 })
@@ -426,21 +444,50 @@ function togglePasswordVisibility(fieldId, btn) {
     }
 }
 
-// Single-Submit Guard for Primary Form Buttons
+// Single-Submit Guard for Primary Form Buttons (Hardened against premature disable & bfcache)
 document.addEventListener('submit', (e) => {
+    // If submission was intercepted or cancelled by client-side logic, do NOT disable
+    if (e.defaultPrevented) return;
     const form = e.target;
-    if (form && !form.dataset.submitting) {
-        const submitBtn = form.querySelector('button[type="submit"]:not([data-no-disable])');
-        if (submitBtn) {
-            submitBtn.dataset.originalText = submitBtn.innerHTML;
-            setTimeout(() => {
+    if (!form || form.dataset.submitting) return;
+
+    // Check HTML5 validity
+    if (form.checkValidity && !form.checkValidity()) return;
+
+    const submitBtn = form.querySelector('button[type="submit"]:not([data-no-disable])');
+    if (submitBtn) {
+        submitBtn.dataset.originalText = submitBtn.innerHTML;
+        setTimeout(() => {
+            if (!e.defaultPrevented) {
                 submitBtn.disabled = true;
                 submitBtn.style.opacity = '0.75';
                 submitBtn.style.cursor = 'wait';
                 submitBtn.innerHTML = `<span>⏳</span> Processing...`;
-            }, 50);
-        }
+
+                // Recovery timeout: restore button after 12s if page hasn't navigated
+                setTimeout(() => {
+                    if (submitBtn && submitBtn.dataset.originalText) {
+                        submitBtn.disabled = false;
+                        submitBtn.style.opacity = '';
+                        submitBtn.style.cursor = '';
+                        submitBtn.innerHTML = submitBtn.dataset.originalText;
+                    }
+                }, 12000);
+            }
+        }, 50);
     }
+});
+
+// Restore submit buttons on bfcache page restore
+window.addEventListener('pageshow', () => {
+    document.querySelectorAll('button[type="submit"]').forEach(btn => {
+        if (btn.dataset.originalText) {
+            btn.disabled = false;
+            btn.style.opacity = '';
+            btn.style.cursor = '';
+            btn.innerHTML = btn.dataset.originalText;
+        }
+    });
 });
 
 

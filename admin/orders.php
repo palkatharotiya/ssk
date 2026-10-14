@@ -22,6 +22,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
     }
 
     db_query("UPDATE orders SET status = ?, payment_status = ? WHERE id = ?", [$newStatus, $newPaymentStatus, $orderId]);
+    
+    // Dispatch customer status update email
+    require_once __DIR__ . '/../includes/mail.php';
+    $updatedOrder = db_fetch_one("SELECT o.*, c.email as customer_email FROM orders o LEFT JOIN customers c ON o.customer_id = c.id WHERE o.id = ?", [$orderId]);
+    if ($updatedOrder) {
+        send_order_status_update_mail($updatedOrder, $newStatus);
+    }
+
     set_flash('success', 'Order status updated successfully.');
     header('Location: orders.php?order_id=' . $orderId);
     exit;

@@ -185,6 +185,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 unset($_SESSION['applied_coupon']);
                 $_SESSION['last_order_id'] = $orderId;
 
+                // Dispatch order confirmation email
+                require_once __DIR__ . '/includes/mail.php';
+                $placedOrder = db_fetch_one("SELECT * FROM orders WHERE id = ?", [$orderId]);
+                $placedItems = db_fetch_all("SELECT * FROM order_items WHERE order_id = ?", [$orderId]);
+                if ($placedOrder) {
+                    send_order_confirmation_mail($placedOrder, $placedItems);
+                }
+
                 // Redirect to confirmation receipt page
                 header('Location: order-success.php?id=' . $orderId);
                 exit;
@@ -409,17 +417,12 @@ require_once __DIR__ . '/includes/header.php';
               <label class="form-label" for="ship-state">
                 State <span class="form-label-required">*</span>
               </label>
-              <select id="ship-state" name="state" class="form-select" autocomplete="address-level1" required>
-                <option value="Gujarat" selected>Gujarat</option>
-                <option value="Maharashtra">Maharashtra</option>
-                <option value="Rajasthan">Rajasthan</option>
-                <option value="Delhi">Delhi NCR</option>
-                <option value="Madhya Pradesh">Madhya Pradesh</option>
-                <option value="Karnataka">Karnataka</option>
-                <option value="Tamil Nadu">Tamil Nadu</option>
-                <option value="Uttar Pradesh">Uttar Pradesh</option>
-                <option value="Punjab">Punjab</option>
-                <option value="Other">Other State</option>
+              <select id="ship-state" name="state" class="form-select" autocomplete="address-level1" onchange="updateShippingState(this.value)" required>
+                <?php foreach (get_indian_states() as $stateCode => $stateLabel): ?>
+                  <option value="<?= htmlspecialchars($stateCode) ?>" <?= ($shippingState === $stateCode) ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($stateLabel) ?>
+                  </option>
+                <?php endforeach; ?>
               </select>
             </div>
 
@@ -543,7 +546,7 @@ require_once __DIR__ . '/includes/header.php';
 
         <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px;">
           <span style="color: var(--text-muted);">Shipping:</span>
-          <span style="font-weight: 700; color: <?= $shippingCharge == 0 ? '#166534' : 'var(--text)' ?>;">
+          <span id="summaryShippingCharge" style="font-weight: 700; color: <?= $shippingCharge == 0 ? '#166534' : 'var(--text)' ?>;">
             <?= $shippingCharge == 0 ? 'FREE' : format_price($shippingCharge) ?>
           </span>
         </div>
@@ -557,7 +560,7 @@ require_once __DIR__ . '/includes/header.php';
 
         <div style="display: flex; justify-content: space-between; border-top: 2px solid var(--card-border); padding-top: 14px; margin-top: 12px; font-size: 18px; font-weight: 800; color: var(--heading);">
           <span>Total:</span>
-          <span style="color: var(--red-text);"><?= format_price($finalTotal) ?></span>
+          <span id="summaryFinalTotal" style="color: var(--red-text);"><?= format_price($finalTotal) ?></span>
         </div>
 
         <div style="font-size: 12px; color: var(--text-muted); margin: 8px 0 16px 0; line-height: 1.4;">
@@ -601,7 +604,7 @@ require_once __DIR__ . '/includes/header.php';
   <div class="mobile-sticky-checkout-bar" style="display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 2px solid var(--card-border); padding: 12px 16px; padding-bottom: calc(12px + env(safe-area-inset-bottom)); box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12); z-index: 1000; align-items: center; justify-content: space-between;">
     <div>
       <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Total Amount</div>
-      <div style="font-size: 18px; font-weight: 900; color: var(--red-text); line-height: 1.1;"><?= format_price($finalTotal) ?></div>
+      <div id="mobileFinalTotal" style="font-size: 18px; font-weight: 900; color: var(--red-text); line-height: 1.1;"><?= format_price($finalTotal) ?></div>
     </div>
     <button type="button" class="btn btn-primary" onclick="submitMainFormFromMobile()" style="min-height: 44px; padding: 0 24px; font-weight: 800; font-size: 15px;">
       Place Order &rarr;
@@ -613,6 +616,40 @@ require_once __DIR__ . '/includes/header.php';
 <script>
 // Mark page body for floating UI suppression on mobile
 document.body.classList.add('page-checkout');
+
+const orderNetSubtotal = <?= (float)max(0, $subtotal - $discount) ?>;
+const gujaratFreeLimit = <?= (float)get_setting('free_shipping_gujarat', '500') ?>;
+const indiaFreeLimit = <?= (float)get_setting('free_shipping_india', '750') ?>;
+
+function updateShippingState(selectedState) {
+  const isGujarat = (selectedState || '').toLowerCase().trim() === 'gujarat';
+  let shipping = 0;
+  if (isGujarat) {
+    shipping = (orderNetSubtotal >= gujaratFreeLimit) ? 0 : 50;
+  } else {
+    shipping = (orderNetSubtotal >= indiaFreeLimit) ? 0 : 80;
+  }
+  const total = orderNetSubtotal + shipping;
+  
+  const shipEl = document.getElementById('summaryShippingCharge');
+  if (shipEl) {
+    if (shipping === 0) {
+      shipEl.textContent = 'FREE';
+      shipEl.style.color = '#166534';
+    } else {
+      shipEl.textContent = '₹' + shipping.toFixed(2);
+      shipEl.style.color = 'var(--text)';
+    }
+  }
+  const totalEl = document.getElementById('summaryFinalTotal');
+  if (totalEl) {
+    totalEl.textContent = '₹' + total.toFixed(2);
+  }
+  const mobTotalEl = document.getElementById('mobileFinalTotal');
+  if (mobTotalEl) {
+    mobTotalEl.textContent = '₹' + total.toFixed(2);
+  }
+}
 
 // Payment Card Selection
 function selectPaymentMethod(labelEl) {

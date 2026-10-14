@@ -4,15 +4,8 @@
  * Shree Sahajanand Sahitya Kendra (Kalakunj Mandir)
  */
 
-require_once __DIR__ . '/../includes/config.php';
-require_once __DIR__ . '/../includes/db.php';
-require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/includes/admin_bootstrap.php';
 
-// Check admin authentication & permission
-if (!is_admin_logged_in()) {
-    header('Location: login.php');
-    exit;
-}
 $admin = current_admin();
 if (!admin_has_permission('products', $admin)) {
     set_flash('error', 'Access Denied: You do not have permission to manage products.');
@@ -40,6 +33,7 @@ if ($action === 'sample_template') {
         'name',
         'department',
         'category',
+        'subcategory',
         'price',
         'sale_price',
         'stock_qty',
@@ -58,6 +52,7 @@ if ($action === 'sample_template') {
             'Shri Vachanamrut (Gujarati Hardcover)',
             'Books',
             'Gujarati Books',
+            'Vachanamrut (Gujarati)',
             '350.00',
             '299.00',
             '100',
@@ -73,6 +68,7 @@ if ($action === 'sample_template') {
             'Pure Tulsi Kanthi 2-Round (Gold Plated)',
             'Kanthis',
             'Plated Kanthi',
+            '',
             '199.00',
             '',
             '75',
@@ -207,26 +203,42 @@ $importErrors = [];
 $unpackedImages = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_import'])) {
+    require_csrf();
     $upsertMode = isset($_POST['upsert_existing']);
     $autoCreateCats = isset($_POST['auto_create_cats']);
     $uploadDir = ROOT_PATH . 'uploads/products/';
 
     if (!is_dir($uploadDir)) {
-        mkdir($uploadDir, 0777, true);
+        mkdir($uploadDir, 0755, true);
     }
+
+    $finfo = class_exists('finfo') ? new finfo(FILEINFO_MIME_TYPE) : null;
+    $allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    $allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
 
     // A. Handle Multiple Images Upload (if user attached files)
     if (!empty($_FILES['image_files']['name'][0])) {
-        $allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
         foreach ($_FILES['image_files']['name'] as $idx => $origName) {
             if ($_FILES['image_files']['error'][$idx] === UPLOAD_ERR_OK) {
+                // Size limit: 5MB per image
+                if ($_FILES['image_files']['size'][$idx] > 5 * 1024 * 1024) {
+                    $importErrors[] = "Skipped image '$origName': Exceeds 5MB limit.";
+                    continue;
+                }
+                $tmpPath = $_FILES['image_files']['tmp_name'][$idx];
                 $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
-                if (in_array($ext, $allowedExts)) {
-                    $cleanName = preg_replace('/[^a-zA-Z0-9._-]/', '', $origName);
-                    $destPath = $uploadDir . $cleanName;
-                    if (move_uploaded_file($_FILES['image_files']['tmp_name'][$idx], $destPath)) {
-                        $unpackedImages[] = $cleanName;
+                $mime = $finfo ? $finfo->file($tmpPath) : 'image/' . $ext;
+
+                if (in_array($ext, $allowedExts, true) && in_array($mime, $allowedMimes, true)) {
+                    $cleanName = preg_replace('/[^a-zA-Z0-9._-]/', '', basename($origName));
+                    if (!empty($cleanName)) {
+                        $destPath = $uploadDir . $cleanName;
+                        if (move_uploaded_file($tmpPath, $destPath)) {
+                            $unpackedImages[] = $cleanName;
+                        }
                     }
+                } else {
+                    $importErrors[] = "Skipped image '$origName': Invalid image format or MIME type.";
                 }
             }
         }
@@ -234,35 +246,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_import'])) {
 
     // B. Handle ZIP of Images (if user attached a .zip archive)
     if (!empty($_FILES['images_zip']['name']) && $_FILES['images_zip']['error'] === UPLOAD_ERR_OK) {
-        $zipExt = strtolower(pathinfo($_FILES['images_zip']['name'], PATHINFO_EXTENSION));
-        if ($zipExt === 'zip') {
-            $tmpZip = $_FILES['images_zip']['tmp_name'];
-            if (class_exists('ZipArchive')) {
-                $zip = new ZipArchive();
-                if ($zip->open($tmpZip) === true) {
-                    for ($i = 0; $i < $zip->numFiles; $i++) {
-                        $entryName = $zip->getNameIndex($i);
-                        // Skip directories and system metadata
-                        if (substr($entryName, -1) === '/' || strpos($entryName, '__MACOSX') !== false) {
-                            continue;
-                        }
-                        $ext = strtolower(pathinfo($entryName, PATHINFO_EXTENSION));
-                        if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'])) {
-                            $baseName = basename($entryName);
-                            $cleanName = preg_replace('/[^a-zA-Z0-9._-]/', '', $baseName);
-                            $fp = $zip->getStream($entryName);
-                            if ($fp) {
-                                $outFp = fopen($uploadDir . $cleanName, 'w');
-                                stream_copy_to_stream($fp, $outFp);
-                                fclose($outFp);
-                                fclose($fp);
-                                $unpackedImages[] = $cleanName;
+        $zipSize = $_FILES['images_zip']['size'];
+        if ($zipSize > 25 * 1024 * 1024) {
+            $importErrors[] = "ZIP upload rejected: Archive exceeds maximum size of 25MB.";
+        } else {
+            $zipExt = strtolower(pathinfo($_FILES['images_zip']['name'], PATHINFO_EXTENSION));
+            if ($zipExt === 'zip') {
+                $tmpZip = $_FILES['images_zip']['tmp_name'];
+                if (class_exists('ZipArchive')) {
+                    $zip = new ZipArchive();
+                    if ($zip->open($tmpZip) === true) {
+                        $maxZipFiles = 150;
+                        $totalExtractedSize = 0;
+                        $maxTotalSize = 50 * 1024 * 1024; // 50MB max extracted
+
+                        for ($i = 0; $i < $zip->numFiles; $i++) {
+                            if ($i >= $maxZipFiles) {
+                                $importErrors[] = "ZIP file contained more than $maxZipFiles images. Remainder skipped.";
+                                break;
+                            }
+                            $entryName = $zip->getNameIndex($i);
+                            // Defense against Zip Slip and system metadata
+                            if (substr($entryName, -1) === '/' || strpos($entryName, '__MACOSX') !== false || strpos($entryName, '..') !== false) {
+                                continue;
+                            }
+                            $ext = strtolower(pathinfo($entryName, PATHINFO_EXTENSION));
+                            if (in_array($ext, $allowedExts, true)) {
+                                $stat = $zip->statIndex($i);
+                                $entrySize = $stat['size'] ?? 0;
+                                if ($entrySize > 5 * 1024 * 1024) {
+                                    $importErrors[] = "Skipped '$entryName' from ZIP: Uncompressed size exceeds 5MB.";
+                                    continue;
+                                }
+                                $totalExtractedSize += $entrySize;
+                                if ($totalExtractedSize > $maxTotalSize) {
+                                    $importErrors[] = "ZIP decompression stopped: Exceeded safety size limit (50MB).";
+                                    break;
+                                }
+
+                                $baseName = basename($entryName);
+                                $cleanName = preg_replace('/[^a-zA-Z0-9._-]/', '', $baseName);
+                                if (!empty($cleanName)) {
+                                    $content = $zip->getFromIndex($i);
+                                    if ($content !== false) {
+                                        $destPath = $uploadDir . $cleanName;
+                                        file_put_contents($destPath, $content);
+                                        $extractedMime = $finfo ? $finfo->file($destPath) : 'image/' . $ext;
+                                        if (!in_array($extractedMime, $allowedMimes, true)) {
+                                            @unlink($destPath);
+                                            $importErrors[] = "Skipped '$entryName': Invalid image data in ZIP.";
+                                        } else {
+                                            $unpackedImages[] = $cleanName;
+                                        }
+                                    }
+                                }
                             }
                         }
+                        $zip->close();
+                    } else {
+                        $importErrors[] = "Failed to open images ZIP archive.";
                     }
-                    $zip->close();
-                } else {
-                    $importErrors[] = "Failed to open images ZIP file.";
                 }
             }
         }
@@ -315,7 +358,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_import'])) {
                 $headerMap[$colIdx] = $norm;
             }
 
-            // Cache departments and categories from DB for fast lookup
+            // Cache departments, categories, and subcategories from DB
             $deptRows = db_fetch_all("SELECT id, name, slug FROM departments");
             $deptLookup = [];
             foreach ($deptRows as $dr) {
@@ -332,126 +375,166 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_import'])) {
                 $catLookup[(string)$cr['id']] = (int)$cr['id'];
             }
 
+            $subcatRows = db_fetch_all("SELECT id, category_id, name, slug FROM subcategories");
+            $subcatLookup = [];
+            foreach ($subcatRows as $sr) {
+                $subKey = $sr['category_id'] . '_' . strtolower(trim($sr['name']));
+                $subcatLookup[$subKey] = (int)$sr['id'];
+                $subcatLookup[(string)$sr['id']] = (int)$sr['id'];
+            }
+
             $totalRows = 0;
             $inserted = 0;
             $updated = 0;
             $skipped = 0;
 
-            // Process data rows
-            while (($row = fgetcsv($stream, 0, $delimiter)) !== false) {
-                if (empty($row) || (count($row) === 1 && trim($row[0]) === '')) {
-                    continue;
-                }
-                $totalRows++;
+            // Execute entire CSV import within an ACID transaction
+            $pdo = db();
+            $pdo->beginTransaction();
+            $importSuccess = true;
 
-                // Map row by header names
-                $item = [];
-                foreach ($row as $idx => $val) {
-                    $key = $headerMap[$idx] ?? ('col_' . $idx);
-                    $item[$key] = trim($val);
-                }
+            try {
+                while (($row = fgetcsv($stream, 0, $delimiter)) !== false) {
+                    if (empty($row) || (count($row) === 1 && trim($row[0]) === '')) {
+                        continue;
+                    }
+                    $totalRows++;
 
-                // Extract fields with smart aliases
-                $name = $item['name'] ?? $item['title'] ?? $item['productname'] ?? $item['itemname'] ?? '';
-                if (empty($name)) {
-                    $importErrors[] = "Row #$totalRows skipped: Missing product title / name.";
-                    $skipped++;
-                    continue;
-                }
+                    // Map row by header names
+                    $item = [];
+                    foreach ($row as $idx => $val) {
+                        $key = $headerMap[$idx] ?? ('col_' . $idx);
+                        $item[$key] = trim($val);
+                    }
 
-                $deptRaw = $item['department'] ?? $item['dept'] ?? $item['departmentname'] ?? $item['deptname'] ?? $item['departmentid'] ?? 'Books';
-                $catRaw = $item['category'] ?? $item['cat'] ?? $item['categoryname'] ?? $item['catname'] ?? $item['categoryid'] ?? 'General';
-                $price = (float)($item['price'] ?? $item['regularprice'] ?? $item['mrp'] ?? 0);
-                $salePrice = !empty($item['saleprice']) ? (float)$item['saleprice'] : null;
-                $stock = (int)($item['stockqty'] ?? $item['stock'] ?? $item['quantity'] ?? $item['qty'] ?? 100);
-                $sku = $item['sku'] ?? $item['code'] ?? $item['itemcode'] ?? '';
-                $image = $item['image'] ?? $item['imageurl'] ?? $item['photo'] ?? $item['picture'] ?? '';
-                $shortDesc = $item['shortdescription'] ?? $item['subtitle'] ?? $item['summary'] ?? '';
-                $desc = $item['description'] ?? $item['details'] ?? $item['longdescription'] ?? '';
-                $isFeatured = in_array(strtolower($item['isfeatured'] ?? $item['featured'] ?? '0'), ['1', 'true', 'yes'], true) ? 1 : 0;
-                $onSale = in_array(strtolower($item['onsale'] ?? $item['sale'] ?? '0'), ['1', 'true', 'yes'], true) ? 1 : 0;
-                $isActive = in_array(strtolower($item['isactive'] ?? $item['active'] ?? $item['status'] ?? '1'), ['1', 'true', 'yes', 'active'], true) ? 1 : 0;
+                    // Extract fields with smart aliases
+                    $name = $item['name'] ?? $item['title'] ?? $item['productname'] ?? $item['itemname'] ?? '';
+                    if (empty($name)) {
+                        $importErrors[] = "Row #$totalRows skipped: Missing product title / name.";
+                        $skipped++;
+                        continue;
+                    }
 
-                // Department Resolution
-                $deptId = $deptLookup[strtolower(trim($deptRaw))] ?? null;
-                if (!$deptId) {
-                    if ($autoCreateCats) {
-                        $deptSlug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $deptRaw)));
-                        $newDeptId = db_insert("INSERT INTO departments (name, slug, sort_order, is_active) VALUES (?, ?, 20, 1)", [
-                            $deptRaw, $deptSlug
+                    $deptRaw = $item['department'] ?? $item['dept'] ?? $item['departmentname'] ?? $item['deptname'] ?? $item['departmentid'] ?? 'Books';
+                    $catRaw = $item['category'] ?? $item['cat'] ?? $item['categoryname'] ?? $item['catname'] ?? $item['categoryid'] ?? 'General';
+                    $subcatRaw = $item['subcategory'] ?? $item['subcat'] ?? $item['subcategoryname'] ?? '';
+                    $price = (float)($item['price'] ?? $item['regularprice'] ?? $item['mrp'] ?? 0);
+                    $salePrice = !empty($item['saleprice']) ? (float)$item['saleprice'] : null;
+                    $stock = (int)($item['stockqty'] ?? $item['stock'] ?? $item['quantity'] ?? $item['qty'] ?? 100);
+                    $sku = $item['sku'] ?? $item['code'] ?? $item['itemcode'] ?? '';
+                    $image = $item['image'] ?? $item['imageurl'] ?? $item['photo'] ?? $item['picture'] ?? '';
+                    $shortDesc = $item['shortdescription'] ?? $item['subtitle'] ?? $item['summary'] ?? '';
+                    $desc = $item['description'] ?? $item['details'] ?? $item['longdescription'] ?? '';
+                    $isFeatured = in_array(strtolower($item['isfeatured'] ?? $item['featured'] ?? '0'), ['1', 'true', 'yes'], true) ? 1 : 0;
+                    $onSale = in_array(strtolower($item['onsale'] ?? $item['sale'] ?? '0'), ['1', 'true', 'yes'], true) ? 1 : 0;
+                    $isActive = in_array(strtolower($item['isactive'] ?? $item['active'] ?? $item['status'] ?? '1'), ['1', 'true', 'yes', 'active'], true) ? 1 : 0;
+
+                    // Department Resolution
+                    $deptId = $deptLookup[strtolower(trim($deptRaw))] ?? null;
+                    if (!$deptId) {
+                        if ($autoCreateCats) {
+                            $deptSlug = generate_unique_slug($deptRaw, 'departments');
+                            $newDeptId = db_insert("INSERT INTO departments (name, slug, sort_order, is_active) VALUES (?, ?, 20, 1)", [
+                                $deptRaw, $deptSlug
+                            ]);
+                            $deptId = (int)$newDeptId;
+                            $deptLookup[strtolower(trim($deptRaw))] = $deptId;
+                        } else {
+                            $deptId = !empty($deptRows) ? (int)$deptRows[0]['id'] : 1;
+                        }
+                    }
+
+                    // Category Resolution
+                    $catKey = $deptId . '_' . strtolower(trim($catRaw));
+                    $catId = $catLookup[$catKey] ?? null;
+                    if (!$catId) {
+                        if ($autoCreateCats) {
+                            $catSlug = generate_unique_slug($catRaw, 'categories');
+                            $newCatId = db_insert("INSERT INTO categories (department_id, name, slug, sort_order, is_active) VALUES (?, ?, ?, 20, 1)", [
+                                $deptId, $catRaw, $catSlug
+                            ]);
+                            $catId = (int)$newCatId;
+                            $catLookup[$catKey] = $catId;
+                        } else {
+                            $catId = 1;
+                        }
+                    }
+
+                    // Subcategory Resolution (Optional)
+                    $subcatId = null;
+                    if (!empty($subcatRaw)) {
+                        $subKey = $catId . '_' . strtolower(trim($subcatRaw));
+                        $subcatId = $subcatLookup[$subKey] ?? null;
+                        if (!$subcatId && $autoCreateCats) {
+                            $subSlug = generate_unique_slug($subcatRaw, 'subcategories');
+                            $newSubId = db_insert("INSERT INTO subcategories (category_id, name, slug, sort_order, is_active) VALUES (?, ?, ?, 20, 1)", [
+                                $catId, $subcatRaw, $subSlug
+                            ]);
+                            $subcatId = (int)$newSubId;
+                            $subcatLookup[$subKey] = $subcatId;
+                        }
+                    }
+
+                    // Check for existing product by SKU
+                    $existing = null;
+                    if (!empty($sku)) {
+                        $existing = db_fetch_one("SELECT id FROM products WHERE sku = ?", [$sku]);
+                    }
+
+                    if (empty($sku)) {
+                        $sku = generate_unique_sku($name);
+                    }
+
+                    $slug = generate_unique_slug($name, 'products', $existing['id'] ?? 0);
+
+                    // Default image fallback if left empty
+                    if (empty($image)) {
+                        $image = 'vachanamrut-english.jpg';
+                    }
+
+                    if ($existing && $upsertMode) {
+                        // Update existing
+                        db_query("UPDATE products SET department_id = ?, category_id = ?, subcategory_id = ?, name = ?, slug = ?, price = ?, sale_price = ?, stock_qty = ?, short_description = ?, description = ?, image = ?, is_featured = ?, on_sale = ?, is_active = ? WHERE id = ?", [
+                            $deptId, $catId, $subcatId, $name, $slug, $price, $salePrice, $stock, $shortDesc, $desc, $image, $isFeatured, $onSale, $isActive, $existing['id']
                         ]);
-                        $deptId = (int)$newDeptId;
-                        $deptLookup[strtolower(trim($deptRaw))] = $deptId;
+                        $updated++;
+                    } elseif ($existing && !$upsertMode) {
+                        // If exists and upsert not allowed, generate alternative unique SKU and insert
+                        $altSku = generate_unique_sku($name);
+                        db_query("INSERT INTO products (department_id, category_id, subcategory_id, name, slug, sku, price, sale_price, stock_qty, short_description, description, image, is_featured, on_sale, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [
+                            $deptId, $catId, $subcatId, $name, $slug, $altSku, $price, $salePrice, $stock, $shortDesc, $desc, $image, $isFeatured, $onSale, $isActive
+                        ]);
+                        $inserted++;
                     } else {
-                        // Default to first department
-                        $deptId = !empty($deptRows) ? (int)$deptRows[0]['id'] : 1;
+                        // Fresh insert
+                        db_query("INSERT INTO products (department_id, category_id, subcategory_id, name, slug, sku, price, sale_price, stock_qty, short_description, description, image, is_featured, on_sale, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [
+                            $deptId, $catId, $subcatId, $name, $slug, $sku, $price, $salePrice, $stock, $shortDesc, $desc, $image, $isFeatured, $onSale, $isActive
+                        ]);
+                        $inserted++;
                     }
                 }
-
-                // Category Resolution
-                $catKey = $deptId . '_' . strtolower(trim($catRaw));
-                $catId = $catLookup[$catKey] ?? null;
-                if (!$catId) {
-                    if ($autoCreateCats) {
-                        $catSlug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $catRaw)));
-                        $newCatId = db_insert("INSERT INTO categories (department_id, name, slug, sort_order, is_active) VALUES (?, ?, ?, 20, 1)", [
-                            $deptId, $catRaw, $catSlug
-                        ]);
-                        $catId = (int)$newCatId;
-                        $catLookup[$catKey] = $catId;
-                    } else {
-                        $catId = 1;
-                    }
+                $pdo->commit();
+            } catch (\Throwable $e) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
                 }
-
-                // Generate SKU if empty
-                if (empty($sku)) {
-                    $skuPrefix = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $name), 0, 3));
-                    $sku = 'SSK-' . ($skuPrefix ?: 'PRD') . '-' . rand(100, 999);
-                }
-
-                $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $name)));
-
-                // Default image fallback if left empty
-                if (empty($image)) {
-                    $image = 'vachanamrut-english.jpg';
-                }
-
-                // Check for existing product by SKU
-                $existing = db_fetch_one("SELECT id FROM products WHERE sku = ?", [$sku]);
-
-                if ($existing && $upsertMode) {
-                    // Update existing
-                    db_query("UPDATE products SET department_id = ?, category_id = ?, name = ?, slug = ?, price = ?, sale_price = ?, stock_qty = ?, short_description = ?, description = ?, image = ?, is_featured = ?, on_sale = ?, is_active = ? WHERE id = ?", [
-                        $deptId, $catId, $name, $slug, $price, $salePrice, $stock, $shortDesc, $desc, $image, $isFeatured, $onSale, $isActive, $existing['id']
-                    ]);
-                    $updated++;
-                } elseif ($existing && !$upsertMode) {
-                    // If exists and upsert not allowed, generate alternative unique SKU and insert
-                    $altSku = $sku . '-' . rand(10, 99);
-                    db_query("INSERT INTO products (department_id, category_id, name, slug, sku, price, sale_price, stock_qty, short_description, description, image, is_featured, on_sale, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [
-                        $deptId, $catId, $name, $slug, $altSku, $price, $salePrice, $stock, $shortDesc, $desc, $image, $isFeatured, $onSale, $isActive
-                    ]);
-                    $inserted++;
-                } else {
-                    // Fresh insert
-                    db_query("INSERT INTO products (department_id, category_id, name, slug, sku, price, sale_price, stock_qty, short_description, description, image, is_featured, on_sale, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [
-                        $deptId, $catId, $name, $slug, $sku, $price, $salePrice, $stock, $shortDesc, $desc, $image, $isFeatured, $onSale, $isActive
-                    ]);
-                    $inserted++;
-                }
+                $importSuccess = false;
+                set_flash('error', 'Import failed and all database updates were rolled back: ' . $e->getMessage());
             }
+
             fclose($stream);
 
-            $importStats = [
-                'total' => $totalRows,
-                'inserted' => $inserted,
-                'updated' => $updated,
-                'skipped' => $skipped,
-                'images_unpacked' => count($unpackedImages),
-            ];
+            if ($importSuccess) {
+                $importStats = [
+                    'total' => $totalRows,
+                    'inserted' => $inserted,
+                    'updated' => $updated,
+                    'skipped' => $skipped,
+                    'images_unpacked' => count($unpackedImages),
+                ];
 
-            set_flash('success', "Bulk Import Complete: $inserted new products added, $updated updated, and " . count($unpackedImages) . " images linked successfully!");
+                set_flash('success', "Bulk Import Complete: $inserted new products added, $updated updated, and " . count($unpackedImages) . " images linked successfully!");
+            }
         }
     }
 }
@@ -567,6 +650,7 @@ require_once __DIR__ . '/includes/header.php';
   </h3>
 
   <form method="POST" enctype="multipart/form-data">
+    <?= csrf_field() ?>
     <input type="hidden" name="do_import" value="1">
 
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 1.75rem;">

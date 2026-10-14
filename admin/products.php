@@ -39,6 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = trim($_POST['name'] ?? '');
     $deptId = (int)($_POST['department_id'] ?? 1);
     $catId = (int)($_POST['category_id'] ?? 1);
+    $subcatId = !empty($_POST['subcategory_id']) ? (int)$_POST['subcategory_id'] : null;
     $sku = trim($_POST['sku'] ?? '');
     $price = (float)($_POST['price'] ?? 0);
     $salePrice = !empty($_POST['sale_price']) ? (float)$_POST['sale_price'] : null;
@@ -51,19 +52,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $image = trim($_POST['image'] ?? 'vachanamrut-english.jpg');
 
     if (empty($sku)) {
-        $sku = 'SSK-' . strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $name), 0, 3)) . '-' . rand(100, 999);
+        $sku = generate_unique_sku($name, $editId);
     }
 
-    $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $name)));
+    $slug = generate_unique_slug($name, 'products', $editId);
 
     if ($editId > 0) {
-        db_query("UPDATE products SET department_id = ?, category_id = ?, name = ?, sku = ?, price = ?, sale_price = ?, stock_qty = ?, short_description = ?, description = ?, image = ?, is_featured = ?, on_sale = ?, is_active = ? WHERE id = ?", [
-            $deptId, $catId, $name, $sku, $price, $salePrice, $stock, $shortDesc, $desc, $image, $isFeatured, $onSale, $isActive, $editId
+        db_query("UPDATE products SET department_id = ?, category_id = ?, subcategory_id = ?, name = ?, slug = ?, sku = ?, price = ?, sale_price = ?, stock_qty = ?, short_description = ?, description = ?, image = ?, is_featured = ?, on_sale = ?, is_active = ? WHERE id = ?", [
+            $deptId, $catId, $subcatId, $name, $slug, $sku, $price, $salePrice, $stock, $shortDesc, $desc, $image, $isFeatured, $onSale, $isActive, $editId
         ]);
         set_flash('success', 'Product updated successfully.');
     } else {
-        db_query("INSERT INTO products (department_id, category_id, name, slug, sku, price, sale_price, stock_qty, short_description, description, image, is_featured, on_sale, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [
-            $deptId, $catId, $name, $slug, $sku, $price, $salePrice, $stock, $shortDesc, $desc, $image, $isFeatured, $onSale, $isActive
+        db_query("INSERT INTO products (department_id, category_id, subcategory_id, name, slug, sku, price, sale_price, stock_qty, short_description, description, image, is_featured, on_sale, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [
+            $deptId, $catId, $subcatId, $name, $slug, $sku, $price, $salePrice, $stock, $shortDesc, $desc, $image, $isFeatured, $onSale, $isActive
         ]);
         set_flash('success', 'New sacred product added successfully.');
     }
@@ -80,9 +81,10 @@ if ($editId > 0) {
     $editProduct = db_fetch_one("SELECT * FROM products WHERE id = ?", [$editId]);
 }
 
-// Fetch all departments & categories for dropdowns
+// Fetch all departments, categories & subcategories for dropdowns
 $departments = db_fetch_all("SELECT * FROM departments ORDER BY sort_order ASC, name ASC");
-$categories = db_fetch_all("SELECT * FROM categories ORDER BY sort_order ASC, name ASC");
+$categories = db_fetch_all("SELECT * FROM categories ORDER BY department_id ASC, sort_order ASC, name ASC");
+$subcategories = db_fetch_all("SELECT * FROM subcategories ORDER BY category_id ASC, sort_order ASC, name ASC");
 
 // Search & Filter parameters
 $searchQ = trim($_GET['q'] ?? '');
@@ -127,10 +129,11 @@ elseif ($sortBy === 'price_asc') $orderBy = "p.price ASC";
 elseif ($sortBy === 'price_desc') $orderBy = "p.price DESC";
 elseif ($sortBy === 'stock_asc') $orderBy = "p.stock_qty ASC";
 
-$products = db_fetch_all("SELECT p.*, d.name as dept_name, c.name as cat_name 
+$products = db_fetch_all("SELECT p.*, d.name as dept_name, c.name as cat_name, sc.name as subcat_name 
                           FROM products p 
                           LEFT JOIN departments d ON p.department_id = d.id 
                           LEFT JOIN categories c ON p.category_id = c.id 
+                          LEFT JOIN subcategories sc ON p.subcategory_id = sc.id
                           WHERE $whereSql 
                           ORDER BY $orderBy", $params);
 
@@ -223,10 +226,10 @@ $totalStoreProducts = (int)(db_fetch_one("SELECT COUNT(*) as c FROM products")['
         </div>
       </div>
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
         <div class="admin-form-group">
           <label class="admin-label admin-label-required" for="p-dept">Department</label>
-          <select id="p-dept" name="department_id" class="admin-select" required>
+          <select id="p-dept" name="department_id" class="admin-select" onchange="filterProductTaxonomy()" required>
             <?php foreach ($departments as $d): ?>
               <option value="<?= $d['id'] ?>" <?= ($editProduct && $editProduct['department_id'] == $d['id']) ? 'selected' : '' ?>>
                 <?= htmlspecialchars($d['name']) ?>
@@ -237,10 +240,22 @@ $totalStoreProducts = (int)(db_fetch_one("SELECT COUNT(*) as c FROM products")['
 
         <div class="admin-form-group">
           <label class="admin-label admin-label-required" for="p-cat">Category</label>
-          <select id="p-cat" name="category_id" class="admin-select" required>
+          <select id="p-cat" name="category_id" class="admin-select" onchange="filterProductSubcategories()" required>
             <?php foreach ($categories as $c): ?>
-              <option value="<?= $c['id'] ?>" <?= ($editProduct && $editProduct['category_id'] == $c['id']) ? 'selected' : '' ?>>
+              <option value="<?= $c['id'] ?>" data-dept-id="<?= $c['department_id'] ?>" <?= ($editProduct && $editProduct['category_id'] == $c['id']) ? 'selected' : '' ?>>
                 <?= htmlspecialchars($c['name']) ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+
+        <div class="admin-form-group">
+          <label class="admin-label" for="p-subcat">Subcategory</label>
+          <select id="p-subcat" name="subcategory_id" class="admin-select">
+            <option value="">None (Optional)</option>
+            <?php foreach ($subcategories as $sc): ?>
+              <option value="<?= $sc['id'] ?>" data-cat-id="<?= $sc['category_id'] ?>" <?= ($editProduct && ($editProduct['subcategory_id'] ?? null) == $sc['id']) ? 'selected' : '' ?>>
+                <?= htmlspecialchars($sc['name']) ?>
               </option>
             <?php endforeach; ?>
           </select>
@@ -376,6 +391,69 @@ $totalStoreProducts = (int)(db_fetch_one("SELECT COUNT(*) as c FROM products")['
       preview.src = '../assets/images/products/' + fileName;
     }
   }
+
+  function filterProductTaxonomy() {
+    const deptSelect = document.getElementById('p-dept');
+    const catSelect = document.getElementById('p-cat');
+    if (!deptSelect || !catSelect) return;
+    const selectedDept = deptSelect.value;
+    let firstVisibleCat = null;
+    let hasSelected = false;
+
+    Array.from(catSelect.options).forEach(opt => {
+      const deptId = opt.getAttribute('data-dept-id');
+      if (!deptId || deptId === selectedDept) {
+        opt.hidden = false;
+        opt.disabled = false;
+        if (!firstVisibleCat) firstVisibleCat = opt;
+        if (opt.selected) hasSelected = true;
+      } else {
+        opt.hidden = true;
+        opt.disabled = true;
+        if (opt.selected) opt.selected = false;
+      }
+    });
+
+    if (!hasSelected && firstVisibleCat) {
+      firstVisibleCat.selected = true;
+    }
+    filterProductSubcategories();
+  }
+
+  function filterProductSubcategories() {
+    const catSelect = document.getElementById('p-cat');
+    const subcatSelect = document.getElementById('p-subcat');
+    if (!catSelect || !subcatSelect) return;
+    const selectedCat = catSelect.value;
+    let hasSelected = false;
+
+    Array.from(subcatSelect.options).forEach(opt => {
+      const catId = opt.getAttribute('data-cat-id');
+      if (!catId) {
+        opt.hidden = false;
+        opt.disabled = false;
+        if (opt.selected) hasSelected = true;
+      } else if (catId === selectedCat) {
+        opt.hidden = false;
+        opt.disabled = false;
+        if (opt.selected) hasSelected = true;
+      } else {
+        opt.hidden = true;
+        opt.disabled = true;
+        if (opt.selected) opt.selected = false;
+      }
+    });
+
+    if (!hasSelected) {
+      subcatSelect.value = '';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('p-dept')) {
+      filterProductTaxonomy();
+    }
+  });
   </script>
 
 <?php else: ?>

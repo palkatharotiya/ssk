@@ -113,9 +113,14 @@ require_once __DIR__ . '/includes/header.php';
           <button type="button" class="qty-btn qty-plus">&plus;</button>
         </div>
 
-        <button type="button" class="btn btn-primary btn-lg btn-add-cart" data-product-id="<?= $product['id'] ?>" style="flex: 1;" <?= $product['stock_qty'] <= 0 ? 'disabled' : '' ?>>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-2z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
-          Add to Cart
+        <?php $isOutOfStock = ((int)$product['stock_qty'] <= 0); ?>
+        <button type="button" class="btn btn-primary btn-lg btn-add-cart" data-product-id="<?= $product['id'] ?>" style="flex: 1;" <?= $isOutOfStock ? 'disabled' : '' ?>>
+          <?php if ($isOutOfStock): ?>
+            Out of Stock
+          <?php else: ?>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-2z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+            Add to Cart
+          <?php endif; ?>
         </button>
 
         <button type="button" class="btn btn-secondary btn-lg card-wishlist-btn <?= $inWish ? 'active' : '' ?>" data-product-id="<?= $product['id'] ?>" title="Save to Wishlist" style="position: static; width: auto; height: auto; border-radius: var(--radius-md); padding: 0 1.25rem;">
@@ -196,9 +201,15 @@ require_once __DIR__ . '/includes/header.php';
                   <span class="old-price"><?= format_price($rPrice) ?></span>
                 <?php endif; ?>
               </div>
-              <button type="button" class="btn btn-primary btn-sm btn-block btn-add-cart" data-product-id="<?= $rel['id'] ?>">
-                Add to Cart
-              </button>
+              <?php if ((int)$rel['stock_qty'] <= 0): ?>
+                <button type="button" class="btn btn-secondary btn-sm btn-block" disabled style="opacity: 0.65; cursor: not-allowed;">
+                  Out of Stock
+                </button>
+              <?php else: ?>
+                <button type="button" class="btn btn-primary btn-sm btn-block btn-add-cart" data-product-id="<?= $rel['id'] ?>">
+                  Add to Cart
+                </button>
+              <?php endif; ?>
             </div>
           </article>
         <?php endforeach; ?>
@@ -217,9 +228,13 @@ require_once __DIR__ . '/includes/header.php';
         <?php endif; ?>
       </div>
     </div>
-    <button type="button" class="btn btn-primary btn-add-cart" data-product-id="<?= $product['id'] ?>" <?= $product['stock_qty'] <= 0 ? 'disabled' : '' ?> style="min-height: 42px; padding: 0.5rem 1rem;">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-2z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
-      Add to Cart
+    <button type="button" class="btn btn-primary btn-add-cart" data-product-id="<?= $product['id'] ?>" <?= $isOutOfStock ? 'disabled' : '' ?> style="min-height: 42px; padding: 0.5rem 1rem;">
+      <?php if ($isOutOfStock): ?>
+        Out of Stock
+      <?php else: ?>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-2z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+        Add to Cart
+      <?php endif; ?>
     </button>
   </div>
 
@@ -234,9 +249,9 @@ function checkPincode() {
     return;
   }
   if (pin.startsWith('38') || pin.startsWith('39') || pin.startsWith('36') || pin.startsWith('37')) {
-    res.innerHTML = '<span style="color: var(--success); font-weight: 600;">✓ Gujarat Region: Fast delivery within 2-3 business days. Free shipping on ₹500+</span>';
+    res.innerHTML = '<span style="color: var(--success); font-weight: 600;">✓ Gujarat Region: Estimated delivery within 2-4 business days. Free shipping on ₹500+</span>';
   } else {
-    res.innerHTML = '<span style="color: var(--primary); font-weight: 600;">✓ All-India Delivery: Express dispatch within 4-6 business days. Free shipping on ₹750+</span>';
+    res.innerHTML = '<span style="color: var(--primary); font-weight: 600;">✓ All-India Delivery: Estimated delivery within 4-7 business days. Free shipping on ₹750+</span>';
   }
 }
 </script>

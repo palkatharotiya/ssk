@@ -155,5 +155,42 @@ function check_rate_limit(string $action, int $maxAttempts = 5, int $decaySecond
     return true;
 }
 
+/**
+ * Records a failed authentication attempt in the login_attempts table.
+ */
+function record_login_attempt(string $accountKey): void {
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+    db_query("INSERT INTO login_attempts (ip_address, account_key, attempt_time) VALUES (?, ?, CURRENT_TIMESTAMP)", [
+        $ip, substr($accountKey, 0, 190)
+    ]);
+}
+
+/**
+ * Checks if an IP or account identifier is currently locked out from login.
+ * 5 failures within 15 minutes = locked out.
+ */
+function is_login_locked_out(string $accountKey, int $maxAttempts = 5, int $lockoutMinutes = 15): bool {
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+    $driver = DB::getDriver();
+    $cutoff = ($driver === 'sqlite') 
+        ? "datetime('now', '-{$lockoutMinutes} minutes')" 
+        : "DATE_SUB(NOW(), INTERVAL {$lockoutMinutes} MINUTE)";
+
+    $row = db_fetch_one("SELECT COUNT(*) as cnt FROM login_attempts WHERE (ip_address = ? OR account_key = ?) AND attempt_time >= $cutoff", [
+        $ip, substr($accountKey, 0, 190)
+    ]);
+    return ((int)($row['cnt'] ?? 0)) >= $maxAttempts;
+}
+
+/**
+ * Clears failed login attempts after successful authentication.
+ */
+function clear_login_attempts(string $accountKey): void {
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+    db_query("DELETE FROM login_attempts WHERE ip_address = ? OR account_key = ?", [
+        $ip, substr($accountKey, 0, 190)
+    ]);
+}
+
 // Automatically send security headers on inclusion
 send_security_headers();

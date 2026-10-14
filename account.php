@@ -96,6 +96,9 @@ require_once __DIR__ . '/includes/header.php';
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                 </button>
               </div>
+              <div style="display: flex; justify-content: flex-end; margin-top: 0.5rem; font-size: 0.8125rem;">
+                <a href="forgot-password.php" style="color: var(--link); font-weight: 600;">Forgot password?</a>
+              </div>
             </div>
 
             <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top: 1rem;">
@@ -300,7 +303,11 @@ require_once __DIR__ . '/includes/header.php';
                       <span class="current-price"><?= format_price($wDisplay) ?></span>
                     </div>
                     <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
-                      <button type="button" class="btn btn-primary btn-sm btn-add-cart" data-product-id="<?= $wItem['id'] ?>" style="flex: 1;">Add to Cart</button>
+                      <?php if ((int)$wItem['stock_qty'] <= 0): ?>
+                        <button type="button" class="btn btn-secondary btn-sm" disabled style="flex: 1; opacity: 0.65; cursor: not-allowed;">Out of Stock</button>
+                      <?php else: ?>
+                        <button type="button" class="btn btn-primary btn-sm btn-add-cart" data-product-id="<?= $wItem['id'] ?>" style="flex: 1;">Add to Cart</button>
+                      <?php endif; ?>
                       <button type="button" class="btn btn-secondary btn-sm card-wishlist-btn active" data-product-id="<?= $wItem['id'] ?>" title="Remove" style="position: static; width: auto; height: auto;">✕</button>
                     </div>
                   </div>

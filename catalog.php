@@ -217,7 +217,9 @@ require_once __DIR__ . '/includes/header.php';
             ?>
             <article class="product-card">
               <div class="card-img-wrap">
-                <?php if ($hasDiscount): ?>
+                <?php if ((int)$product['stock_qty'] <= 0): ?>
+                  <span class="card-badge" style="background: #475569; color: #fff;">Out of Stock</span>
+                <?php elseif ($hasDiscount): ?>
                   <span class="card-badge badge-sale"><?= $discountPct ?>% OFF</span>
                 <?php elseif ($product['is_featured']): ?>
                   <span class="card-badge badge-featured">Featured</span>
@@ -248,10 +250,16 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
 
                 <div class="card-actions">
-                  <button type="button" class="btn btn-primary btn-sm btn-block btn-add-cart" data-product-id="<?= $product['id'] ?>">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-2z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
-                    Add to Cart
-                  </button>
+                  <?php if ((int)$product['stock_qty'] <= 0): ?>
+                    <button type="button" class="btn btn-secondary btn-sm btn-block" disabled style="opacity: 0.65; cursor: not-allowed;">
+                      Out of Stock
+                    </button>
+                  <?php else: ?>
+                    <button type="button" class="btn btn-primary btn-sm btn-block btn-add-cart" data-product-id="<?= $product['id'] ?>">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-2z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                      Add to Cart
+                    </button>
+                  <?php endif; ?>
                 </div>
               </div>
             </article>

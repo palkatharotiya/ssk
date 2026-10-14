@@ -179,6 +179,14 @@ function add_to_cart(int $productId, int $qty = 1): array {
         return ['success' => false, 'message' => 'Product not found or inactive.'];
     }
 
+    $availableStock = (int)$product['stock_qty'];
+    if ($availableStock <= 0) {
+        return ['success' => false, 'message' => 'Sorry, "' . htmlspecialchars($product['name']) . '" is currently out of stock.'];
+    }
+
+    $maxLineCap = 20;
+    $maxAllowed = min($availableStock, $maxLineCap);
+
     if ($qty < 1) $qty = 1;
     $sessionId = get_session_id();
     $customerId = $_SESSION['customer_id'] ?? null;
@@ -190,13 +198,17 @@ function add_to_cart(int $productId, int $qty = 1): array {
     }
 
     if ($existing) {
-        $newQty = $existing['quantity'] + $qty;
-        if ($product['stock_qty'] > 0 && $newQty > $product['stock_qty']) {
-            $newQty = $product['stock_qty'];
+        $currentQty = (int)$existing['quantity'];
+        if ($currentQty >= $maxAllowed) {
+            return [
+                'success' => false,
+                'message' => 'You already have the maximum available quantity (' . $maxAllowed . ') of "' . htmlspecialchars($product['name']) . '" in your cart.'
+            ];
         }
+        $newQty = min($currentQty + $qty, $maxAllowed);
         db_query("UPDATE cart SET quantity = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [$newQty, $existing['id']]);
     } else {
-        $initialQty = min($qty, max(1, $product['stock_qty']));
+        $initialQty = min($qty, $maxAllowed);
         if ($customerId) {
             db_query("INSERT INTO cart (customer_id, product_id, quantity) VALUES (?, ?, ?)", [$customerId, $productId, $initialQty]);
         } else {
@@ -220,10 +232,25 @@ function update_cart_quantity(int $productId, int $qty): array {
         return remove_from_cart($productId);
     }
 
-    $product = db_fetch_one("SELECT id, stock_qty FROM products WHERE id = ?", [$productId]);
-    if ($product && $product['stock_qty'] > 0 && $qty > $product['stock_qty']) {
-        $qty = $product['stock_qty'];
+    $product = db_fetch_one("SELECT id, stock_qty, name FROM products WHERE id = ?", [$productId]);
+    if (!$product) {
+        return remove_from_cart($productId);
     }
+
+    $availableStock = (int)$product['stock_qty'];
+    if ($availableStock <= 0) {
+        remove_from_cart($productId);
+        return [
+            'success' => false,
+            'message' => 'Item "' . htmlspecialchars($product['name']) . '" is currently out of stock and was removed from your cart.',
+            'cart_count' => get_cart_count(),
+            'subtotal' => format_price(get_cart_subtotal())
+        ];
+    }
+
+    $maxLineCap = 20;
+    $maxAllowed = min($availableStock, $maxLineCap);
+    $qty = min($qty, $maxAllowed);
 
     if ($customerId) {
         db_query("UPDATE cart SET quantity = ?, updated_at = CURRENT_TIMESTAMP WHERE customer_id = ? AND product_id = ?", [$qty, $customerId, $productId]);
@@ -282,14 +309,29 @@ function current_user(): ?array {
 
 function login_user(string $email, string $password): array {
     $email = trim(strtolower($email));
+
+    if (function_exists('is_login_locked_out') && is_login_locked_out($email)) {
+        return [
+            'success' => false,
+            'message' => 'Too many failed login attempts. For your security, this account is temporarily locked for 15 minutes.'
+        ];
+    }
+
     $user = db_fetch_one("SELECT * FROM customers WHERE email = ? AND is_active = 1", [$email]);
 
     if (!$user || !password_verify($password, $user['password'])) {
+        if (function_exists('record_login_attempt')) {
+            record_login_attempt($email);
+        }
         return ['success' => false, 'message' => 'Invalid email address or password.'];
     }
 
+    if (function_exists('clear_login_attempts')) {
+        clear_login_attempts($email);
+    }
+
     session_regenerate_id(true);
-    $_SESSION['customer_id'] = $user['id'];
+    $_SESSION['customer_id'] = (int)$user['id'];
     $_SESSION['customer_name'] = $user['first_name'] . ' ' . $user['last_name'];
     $_SESSION['customer_email'] = $user['email'];
 
@@ -314,22 +356,36 @@ function register_user(string $firstName, string $lastName, string $email, strin
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         return ['success' => false, 'message' => 'Please provide a valid email address.'];
     }
-    if (strlen($password) < 6) {
-        return ['success' => false, 'message' => 'Password must be at least 6 characters long.'];
+    if (strlen($password) < 8) {
+        return ['success' => false, 'message' => 'Password must be at least 8 characters long.'];
     }
 
-    $existing = db_fetch_one("SELECT id FROM customers WHERE email = ?", [$email]);
+    $existing = db_fetch_one("SELECT id, is_guest FROM customers WHERE email = ?", [$email]);
+    $hash = password_hash($password, PASSWORD_DEFAULT);
+
     if ($existing) {
+        if (!empty($existing['is_guest'])) {
+            // Upgrade existing guest account to full registered customer and link all past orders
+            db_query("UPDATE customers SET first_name = ?, last_name = ?, password = ?, phone = ?, is_guest = 0, is_active = 1 WHERE id = ?", [
+                trim($firstName), trim($lastName), $hash, trim($phone), $existing['id']
+            ]);
+            $customerId = (int)$existing['id'];
+            session_regenerate_id(true);
+            $_SESSION['customer_id'] = $customerId;
+            $_SESSION['customer_name'] = trim($firstName) . ' ' . trim($lastName);
+            $_SESSION['customer_email'] = $email;
+            return ['success' => true, 'message' => 'Your account has been registered and your past order history linked!'];
+        }
         return ['success' => false, 'message' => 'An account with this email already exists.'];
     }
 
-    $hash = password_hash($password, PASSWORD_DEFAULT);
-    db_query("INSERT INTO customers (first_name, last_name, email, password, phone, is_active, email_verified) VALUES (?, ?, ?, ?, ?, 1, 1)", [
+    db_query("INSERT INTO customers (first_name, last_name, email, password, phone, is_active, email_verified, is_guest) VALUES (?, ?, ?, ?, ?, 1, 1, 0)", [
         trim($firstName), trim($lastName), $email, $hash, trim($phone)
     ]);
     $newId = (int)db_last_insert_id();
 
     // Auto login
+    session_regenerate_id(true);
     $_SESSION['customer_id'] = $newId;
     $_SESSION['customer_name'] = trim($firstName) . ' ' . trim($lastName);
     $_SESSION['customer_email'] = $email;
@@ -396,13 +452,28 @@ function admin_has_permission(string $permKey, ?array $adminUser = null): bool {
 
 function login_admin(string $username, string $password): array {
     $username = trim($username);
+
+    if (function_exists('is_login_locked_out') && is_login_locked_out($username)) {
+        return [
+            'success' => false,
+            'message' => 'Too many failed administrator login attempts. Account access is temporarily locked for 15 minutes.'
+        ];
+    }
+
     $admin = db_fetch_one("SELECT * FROM admin_users WHERE username = ? OR email = ?", [$username, $username]);
     if (!$admin || !password_verify($password, $admin['password'])) {
+        if (function_exists('record_login_attempt')) {
+            record_login_attempt($username);
+        }
         return ['success' => false, 'message' => 'Invalid admin username or password.'];
     }
 
     if (empty($admin['is_active'])) {
         return ['success' => false, 'message' => 'This administrator account has been deactivated. Please contact the temple superadmin.'];
+    }
+
+    if (function_exists('clear_login_attempts')) {
+        clear_login_attempts($username);
     }
 
     session_regenerate_id(true);
@@ -428,6 +499,26 @@ function logout_admin(): void {
 }
 
 // Wishlist
+function get_customer_wishlist_map(bool $forceRefresh = false): array {
+    static $wishlistMap = null;
+    if ($forceRefresh) {
+        $wishlistMap = null;
+    }
+    if (!is_logged_in()) {
+        return [];
+    }
+    if ($wishlistMap !== null) {
+        return $wishlistMap;
+    }
+    $customerId = (int)$_SESSION['customer_id'];
+    $rows = db_fetch_all("SELECT product_id FROM wishlist WHERE customer_id = ?", [$customerId]);
+    $wishlistMap = [];
+    foreach ($rows as $row) {
+        $wishlistMap[(int)$row['product_id']] = true;
+    }
+    return $wishlistMap;
+}
+
 function toggle_wishlist(int $productId): array {
     if (!is_logged_in()) {
         return ['success' => false, 'require_login' => true, 'message' => 'Please login to add items to your wishlist.'];
@@ -436,17 +527,148 @@ function toggle_wishlist(int $productId): array {
     $exists = db_fetch_one("SELECT id FROM wishlist WHERE customer_id = ? AND product_id = ?", [$customerId, $productId]);
     if ($exists) {
         db_query("DELETE FROM wishlist WHERE id = ?", [$exists['id']]);
+        get_customer_wishlist_map(true);
         return ['success' => true, 'action' => 'removed', 'message' => 'Removed from wishlist.', 'count' => get_wishlist_count()];
     } else {
         db_query("INSERT INTO wishlist (customer_id, product_id) VALUES (?, ?)", [$customerId, $productId]);
+        get_customer_wishlist_map(true);
         return ['success' => true, 'action' => 'added', 'message' => 'Added to wishlist!', 'count' => get_wishlist_count()];
+    }
+}
+
+/**
+ * Creates a URL-safe, unique slug supporting Gujarati, Hindi, and Unicode scripts (Finding P1-7).
+ */
+function generate_unique_slug(string $name, string $table, int $excludeId = 0, string $column = 'slug'): string {
+    $slug = '';
+
+    // 1. Attempt transliteration with PHP intl Transliterator if installed
+    if (class_exists('Transliterator')) {
+        $transliterator = \Transliterator::create('Any-Latin; Latin-ASCII; Lower();');
+        if ($transliterator) {
+            $transliterated = $transliterator->transliterate($name);
+            if ($transliterated !== false) {
+                $slug = $transliterated;
+            }
+        }
+    }
+
+    // 2. Fallback to iconv if Transliterator unavailable
+    if (empty($slug) && function_exists('iconv')) {
+        $iconvStr = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $name);
+        if ($iconvStr !== false) {
+            $slug = $iconvStr;
+        }
+    }
+
+    // 3. Clean up non-alphanumeric characters
+    $slug = preg_replace('/[^a-zA-Z0-9]+/', '-', strtolower($slug ?: $name));
+    $slug = trim($slug, '-');
+
+    // 4. If slug is still empty (e.g. purely non-Latin characters without iconv support)
+    if (empty($slug)) {
+        $prefix = substr($table, 0, 4);
+        $slug = $prefix . '-' . substr(md5($name . microtime()), 0, 8);
+    }
+
+    // 5. Ensure uniqueness in the database with incremental suffix loop (-2, -3)
+    $originalSlug = $slug;
+    $counter = 1;
+    $excludeClause = $excludeId > 0 ? " AND id != ?" : "";
+    $params = [$slug];
+    if ($excludeId > 0) {
+        $params[] = $excludeId;
+    }
+
+    while (true) {
+        $exists = db_fetch_one("SELECT id FROM {$table} WHERE {$column} = ? {$excludeClause} LIMIT 1", $params);
+        if (!$exists) {
+            break;
+        }
+        $counter++;
+        $slug = $originalSlug . '-' . $counter;
+        $params[0] = $slug;
+    }
+
+    return $slug;
+}
+
+/**
+ * Generates a collision-free product SKU (Finding P1-7).
+ */
+function generate_unique_sku(string $name, int $productId = 0): string {
+    $clean = preg_replace('/[^A-Za-z0-9]/', '', strtoupper($name));
+    $prefix = !empty($clean) ? substr($clean, 0, 3) : 'SSK';
+    if (strlen($prefix) < 3) {
+        $prefix = str_pad($prefix, 3, 'X');
+    }
+
+    $counter = 100;
+    while (true) {
+        $sku = sprintf('%s-%04d', $prefix, $counter);
+        $excludeClause = $productId > 0 ? " AND id != ?" : "";
+        $params = [$sku];
+        if ($productId > 0) {
+            $params[] = $productId;
+        }
+        $exists = db_fetch_one("SELECT id FROM products WHERE sku = ? {$excludeClause} LIMIT 1", $params);
+        if (!$exists) {
+            return $sku;
+        }
+        $counter++;
     }
 }
 
 function is_in_wishlist(int $productId): bool {
     if (!is_logged_in()) return false;
-    $row = db_fetch_one("SELECT id FROM wishlist WHERE customer_id = ? AND product_id = ?", [$_SESSION['customer_id'], $productId]);
-    return !empty($row);
+    $map = get_customer_wishlist_map();
+    return isset($map[$productId]);
+}
+
+/**
+ * Returns comprehensive list of all 28 Indian States and 8 Union Territories.
+ * High-volume devotional hubs are prioritized at the top.
+ * @return array<string, string>
+ */
+function get_indian_states(): array {
+    return [
+        'Gujarat' => 'Gujarat',
+        'Maharashtra' => 'Maharashtra',
+        'Rajasthan' => 'Rajasthan',
+        'Delhi' => 'Delhi (NCT)',
+        'Madhya Pradesh' => 'Madhya Pradesh',
+        'Andhra Pradesh' => 'Andhra Pradesh',
+        'Arunachal Pradesh' => 'Arunachal Pradesh',
+        'Assam' => 'Assam',
+        'Bihar' => 'Bihar',
+        'Chhattisgarh' => 'Chhattisgarh',
+        'Goa' => 'Goa',
+        'Haryana' => 'Haryana',
+        'Himachal Pradesh' => 'Himachal Pradesh',
+        'Jharkhand' => 'Jharkhand',
+        'Karnataka' => 'Karnataka',
+        'Kerala' => 'Kerala',
+        'Manipur' => 'Manipur',
+        'Meghalaya' => 'Meghalaya',
+        'Mizoram' => 'Mizoram',
+        'Nagaland' => 'Nagaland',
+        'Odisha' => 'Odisha',
+        'Punjab' => 'Punjab',
+        'Sikkim' => 'Sikkim',
+        'Tamil Nadu' => 'Tamil Nadu',
+        'Telangana' => 'Telangana',
+        'Tripura' => 'Tripura',
+        'Uttar Pradesh' => 'Uttar Pradesh',
+        'Uttarakhand' => 'Uttarakhand',
+        'West Bengal' => 'West Bengal',
+        'Andaman and Nicobar Islands' => 'Andaman and Nicobar Islands',
+        'Chandigarh' => 'Chandigarh',
+        'Dadra and Nagar Haveli and Daman and Diu' => 'Dadra and Nagar Haveli and Daman and Diu',
+        'Jammu and Kashmir' => 'Jammu and Kashmir',
+        'Ladakh' => 'Ladakh',
+        'Lakshadweep' => 'Lakshadweep',
+        'Puducherry' => 'Puducherry'
+    ];
 }
 
 function get_wishlist_count(): int {

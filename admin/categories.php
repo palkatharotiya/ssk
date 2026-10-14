@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_dept'])) {
     $desc = trim($_POST['description'] ?? '');
     $sortOrder = (int)($_POST['sort_order'] ?? 10);
     $isActive = isset($_POST['is_active']) ? 1 : 0;
-    $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $name)));
+    $slug = generate_unique_slug($name, 'departments', $deptId);
 
     if ($name) {
         if ($deptId > 0) {
@@ -52,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_cat'])) {
     $desc = trim($_POST['description'] ?? '');
     $sortOrder = (int)($_POST['sort_order'] ?? 10);
     $isActive = isset($_POST['is_active']) ? 1 : 0;
-    $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $name)));
+    $slug = generate_unique_slug($name, 'categories', $catId);
 
     if ($name && $deptId > 0) {
         if ($catId > 0) {
@@ -102,6 +102,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_cat'])) {
     exit;
 }
 
+// Handle Add / Edit Subcategory POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_subcat'])) {
+    if (!verify_csrf_token($_POST['csrf_token'] ?? '')) {
+        set_flash('error', 'Security token expired. Please refresh and try again.');
+        header('Location: categories.php');
+        exit;
+    }
+    $subcatId = (int)($_POST['subcat_id'] ?? 0);
+    $catId = (int)($_POST['category_id'] ?? 0);
+    $name = trim($_POST['name'] ?? '');
+    $desc = trim($_POST['description'] ?? '');
+    $sortOrder = (int)($_POST['sort_order'] ?? 10);
+    $isActive = isset($_POST['is_active']) ? 1 : 0;
+    $slug = generate_unique_slug($name, 'subcategories', $subcatId);
+
+    if ($name && $catId > 0) {
+        if ($subcatId > 0) {
+            db_query("UPDATE subcategories SET category_id = ?, name = ?, slug = ?, description = ?, sort_order = ?, is_active = ? WHERE id = ?", [
+                $catId, $name, $slug, $desc, $sortOrder, $isActive, $subcatId
+            ]);
+            set_flash('success', "Subcategory '$name' updated successfully.");
+        } else {
+            db_query("INSERT INTO subcategories (category_id, name, slug, description, sort_order, is_active) VALUES (?, ?, ?, ?, ?, ?)", [
+                $catId, $name, $slug, $desc, $sortOrder, $isActive
+            ]);
+            set_flash('success', "New subcategory '$name' created successfully.");
+        }
+        header('Location: categories.php');
+        exit;
+    }
+}
+
+// Handle Delete Subcategory via POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_subcat'])) {
+    require_csrf();
+    $delSubId = (int)$_POST['subcat_id'];
+    $prodCount = (int)(db_fetch_one("SELECT COUNT(*) as c FROM products WHERE subcategory_id = ?", [$delSubId])['c'] ?? 0);
+    if ($prodCount > 0) {
+        db_query("UPDATE products SET subcategory_id = NULL WHERE subcategory_id = ?", [$delSubId]);
+    }
+    db_query("DELETE FROM subcategories WHERE id = ?", [$delSubId]);
+    set_flash('success', "Subcategory removed successfully (unlinked from $prodCount product(s)).");
+    header('Location: categories.php');
+    exit;
+}
+
 // Check for edit query params
 $editDept = null;
 if (isset($_GET['edit_dept'])) {
@@ -111,6 +157,11 @@ if (isset($_GET['edit_dept'])) {
 $editCat = null;
 if (isset($_GET['edit_cat'])) {
     $editCat = db_fetch_one("SELECT * FROM categories WHERE id = ?", [(int)$_GET['edit_cat']]);
+}
+
+$editSubcat = null;
+if (isset($_GET['edit_subcat'])) {
+    $editSubcat = db_fetch_one("SELECT * FROM subcategories WHERE id = ?", [(int)$_GET['edit_subcat']]);
 }
 
 // Fetch all departments with their categories & product counts
@@ -131,8 +182,22 @@ $rawCats = db_fetch_all("SELECT c.*, COUNT(p.id) as product_count
                          ORDER BY c.sort_order ASC, c.name ASC");
 
 $catsByDept = [];
+$allCategoriesFlat = [];
 foreach ($rawCats as $rc) {
     $catsByDept[$rc['department_id']][] = $rc;
+    $allCategoriesFlat[] = $rc;
+}
+
+// Fetch all subcategories indexed by category_id
+$rawSubcats = db_fetch_all("SELECT sc.*, COUNT(p.id) as product_count 
+                            FROM subcategories sc 
+                            LEFT JOIN products p ON sc.id = p.subcategory_id 
+                            GROUP BY sc.id 
+                            ORDER BY sc.sort_order ASC, sc.name ASC");
+
+$subcatsByCat = [];
+foreach ($rawSubcats as $rsc) {
+    $subcatsByCat[$rsc['category_id']][] = $rsc;
 }
 
 // Dept icons helper
@@ -170,6 +235,9 @@ $deptIcons = [
       </button>
       <button type="button" onclick="openCatModal(0)" class="admin-btn admin-btn-secondary">
         + Add Category
+      </button>
+      <button type="button" onclick="openSubcatModal(0)" class="admin-btn admin-btn-secondary">
+        + Add Subcategory
       </button>
     </div>
 
@@ -249,7 +317,7 @@ $deptIcons = [
       </div>
       <div>
         <label class="admin-label">Category Name *</label>
-        <input type="text" name="name" id="modalCatName" class="admin-input" placeholder="e.g. Gujarati Vachanamrut, Tulsi Kanthis" value="<?= htmlspecialchars($editCat['name'] ?? '') ?>" required>
+        <input type="text" name="name" id="modalCatName" class="admin-input" placeholder="e.g. Gujarati Books, Plated Kanthi" value="<?= htmlspecialchars($editCat['name'] ?? '') ?>" required>
       </div>
       <div>
         <label class="admin-label">Sort Order</label>
@@ -268,6 +336,57 @@ $deptIcons = [
       <button type="button" onclick="closeCatModal()" class="admin-btn admin-btn-secondary">Cancel</button>
       <button type="submit" class="admin-btn admin-btn-primary">
         <?= $editCat ? 'Update Category' : '+ Add Category' ?>
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- Add / Edit Subcategory Card Form (Toggled or active if editing) -->
+<div id="subcatFormCard" class="admin-card" style="display: <?= $editSubcat ? 'block' : 'none' ?>; background: var(--surface-2); border: 1.5px solid var(--card-border); margin-bottom: 2rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--heading);">
+      <?= $editSubcat ? 'Edit Subcategory: ' . htmlspecialchars($editSubcat['name']) : 'Add Subcategory under Category' ?>
+    </h3>
+    <button type="button" onclick="closeSubcatModal()" class="admin-btn admin-btn-secondary admin-btn-sm">&times; Close</button>
+  </div>
+
+  <form method="POST">
+    <?= csrf_field() ?>
+    <input type="hidden" name="save_subcat" value="1">
+    <input type="hidden" name="subcat_id" id="modalSubcatId" value="<?= $editSubcat['id'] ?? 0 ?>">
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr 100px 100px; gap: 1rem; margin-bottom: 1rem;">
+      <div>
+        <label class="admin-label">Parent Category *</label>
+        <select name="category_id" id="modalSubcatCatSelect" class="admin-select" required>
+          <?php foreach ($allCategoriesFlat as $cf): ?>
+            <option value="<?= $cf['id'] ?>" <?= ($editSubcat && $editSubcat['category_id'] == $cf['id']) ? 'selected' : '' ?>>
+              <?= htmlspecialchars($cf['name']) ?>
+            </option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div>
+        <label class="admin-label">Subcategory Name *</label>
+        <input type="text" name="name" id="modalSubcatName" class="admin-input" placeholder="e.g. Vachanamrut (Gujarati)" value="<?= htmlspecialchars($editSubcat['name'] ?? '') ?>" required>
+      </div>
+      <div>
+        <label class="admin-label">Sort Order</label>
+        <input type="number" name="sort_order" class="admin-input" value="<?= htmlspecialchars($editSubcat['sort_order'] ?? 10) ?>">
+      </div>
+      <div>
+        <label class="admin-label">Status</label>
+        <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.6rem; cursor: pointer;">
+          <input type="checkbox" name="is_active" value="1" <?= (!$editSubcat || !empty($editSubcat['is_active'])) ? 'checked' : '' ?>>
+          <strong>Active</strong>
+        </label>
+      </div>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+      <button type="button" onclick="closeSubcatModal()" class="admin-btn admin-btn-secondary">Cancel</button>
+      <button type="submit" class="admin-btn admin-btn-primary">
+        <?= $editSubcat ? 'Update Subcategory' : '+ Add Subcategory' ?>
       </button>
     </div>
   </form>
@@ -331,27 +450,56 @@ $deptIcons = [
             </button>
           </div>
         <?php else: ?>
-          <?php foreach ($subCats as $sc): ?>
-            <div class="subcat-chip" data-cat-name="<?= htmlspecialchars($sc['name']) ?>">
-              <div>
-                <strong style="color: var(--admin-text); font-size: 0.875rem;">
-                  <?= htmlspecialchars($sc['name']) ?>
-                </strong>
-                <div style="font-size: 0.75rem; color: var(--admin-text-muted);">
-                  <?= $sc['product_count'] ?> items • <code><?= htmlspecialchars($sc['slug']) ?></code>
+          <?php foreach ($subCats as $sc): 
+            $subcatList = $subcatsByCat[$sc['id']] ?? [];
+          ?>
+            <div class="subcat-chip" data-cat-name="<?= htmlspecialchars($sc['name']) ?>" style="display: flex; flex-direction: column; align-items: stretch; gap: 0.5rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
+                <div>
+                  <strong style="color: var(--admin-text); font-size: 0.875rem;">
+                    <?= htmlspecialchars($sc['name']) ?>
+                  </strong>
+                  <div style="font-size: 0.75rem; color: var(--admin-text-muted);">
+                    <?= $sc['product_count'] ?> items • <code><?= htmlspecialchars($sc['slug']) ?></code>
+                    <?php if (!empty($subcatList)): ?>
+                      • <span style="background: rgba(1, 23, 96, 0.08); padding: 0.1rem 0.4rem; border-radius: 4px; font-weight: 700; color: var(--admin-primary);"><?= count($subcatList) ?> subcategories</span>
+                    <?php endif; ?>
+                  </div>
+                </div>
+                <div style="display: flex; gap: 0.25rem;">
+                  <button type="button" onclick="openSubcatModal(<?= $sc['id'] ?>)" class="admin-btn admin-btn-secondary admin-btn-sm" style="padding: 0.2rem 0.45rem; font-size: 0.7rem;" title="Add Subcategory under this category">
+                    + Sub
+                  </button>
+                  <a href="categories.php?edit_cat=<?= $sc['id'] ?>" class="admin-btn admin-btn-secondary admin-btn-sm" style="padding: 0.2rem 0.45rem; font-size: 0.7rem;" title="Edit category">
+                    ✎
+                  </a>
+                  <form method="POST" action="categories.php" style="display: inline;" onsubmit="return confirm('Delete category: <?= htmlspecialchars(addslashes($sc['name'])) ?>?');">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="delete_cat" value="1">
+                    <input type="hidden" name="cat_id" value="<?= $sc['id'] ?>">
+                    <button type="submit" class="admin-btn admin-btn-danger admin-btn-sm" style="padding: 0.2rem 0.45rem; font-size: 0.7rem;" title="Delete category">&times;</button>
+                  </form>
                 </div>
               </div>
-              <div style="display: flex; gap: 0.25rem;">
-                <a href="categories.php?edit_cat=<?= $sc['id'] ?>" class="admin-btn admin-btn-secondary admin-btn-sm" style="padding: 0.2rem 0.45rem; font-size: 0.7rem;" title="Edit category">
-                  ✎
-                </a>
-                <form method="POST" action="categories.php" style="display: inline;" onsubmit="return confirm('Delete category: <?= htmlspecialchars(addslashes($sc['name'])) ?>?');">
-                  <?= csrf_field() ?>
-                  <input type="hidden" name="delete_cat" value="1">
-                  <input type="hidden" name="cat_id" value="<?= $sc['id'] ?>">
-                  <button type="submit" class="admin-btn admin-btn-danger admin-btn-sm" style="padding: 0.2rem 0.45rem; font-size: 0.7rem;" title="Delete category">&times;</button>
-                </form>
-              </div>
+
+              <?php if (!empty($subcatList)): ?>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.35rem; padding-top: 0.35rem; border-top: 1px dashed var(--card-border);">
+                  <?php foreach ($subcatList as $sub): ?>
+                    <span style="display: inline-flex; align-items: center; gap: 0.35rem; background: var(--surface); padding: 0.15rem 0.45rem; border-radius: 6px; border: 1px solid var(--card-border); font-size: 0.75rem; color: var(--admin-text);">
+                      <span><?= htmlspecialchars($sub['name']) ?></span>
+                      <span style="font-size: 0.65rem; color: var(--admin-text-muted);">(<?= $sub['product_count'] ?>)</span>
+                      <a href="categories.php?edit_subcat=<?= $sub['id'] ?>" style="color: var(--link); text-decoration: none; font-size: 0.7rem;" title="Edit subcategory">✎</a>
+                      <form method="POST" action="categories.php" style="display: inline;" onsubmit="return confirm('Delete subcategory <?= htmlspecialchars(addslashes($sub['name'])) ?>?');">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="delete_subcat" value="1">
+                        <input type="hidden" name="subcat_id" value="<?= $sub['id'] ?>">
+                        <button type="submit" style="background: none; border: none; color: #dc2626; cursor: pointer; padding: 0; font-size: 0.75rem; line-height: 1;" title="Delete subcategory">&times;</button>
+                      </form>
+                    </span>
+                  <?php endforeach; ?>
+                </div>
+              <?php endif; ?>
+
             </div>
           <?php endforeach; ?>
         <?php endif; ?>
@@ -390,6 +538,26 @@ function openCatModal(deptId) {
 
 function closeCatModal() {
   const card = document.getElementById('catFormCard');
+  if (card) card.style.display = 'none';
+}
+
+function openSubcatModal(catId) {
+  const card = document.getElementById('subcatFormCard');
+  if (card) {
+    card.style.display = 'block';
+    if (catId > 0) {
+      const select = document.getElementById('modalSubcatCatSelect');
+      if (select) select.value = catId;
+    }
+    document.getElementById('modalSubcatId').value = 0;
+    document.getElementById('modalSubcatName').value = '';
+    card.scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('modalSubcatName').focus();
+  }
+}
+
+function closeSubcatModal() {
+  const card = document.getElementById('subcatFormCard');
   if (card) card.style.display = 'none';
 }
 </script>

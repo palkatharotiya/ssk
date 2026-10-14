@@ -18,28 +18,17 @@
   --dark: var(--heading);
   --dark-surface: var(--surface-2);
   --text-main: var(--text);
-  --text-muted: var(--text-muted);
   --text-light: var(--text-muted);
-  --border: var(--border);
   --border-light: var(--surface-2);
   
   --bg-main: var(--bg);
   --bg-card: var(--surface);
   --bg-glass: var(--surface);
 
-  --success: var(--success);
-  --warning: var(--warning);
-  --danger: var(--danger);
-
-  --shadow-sm: var(--shadow-sm);
-  --shadow-md: var(--shadow-md);
-  --shadow-lg: var(--shadow-lg);
   --shadow-xl: var(--shadow-lg);
 
-  --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-btn);
   --radius-lg: var(--radius-card);
-  --radius-full: var(--radius-full);
 
   --font-heading: var(--font-sans);
   --font-body: var(--font-sans);

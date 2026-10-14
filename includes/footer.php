@@ -192,7 +192,7 @@
           <label style="display: flex; align-items: center; gap: 0.35rem; cursor: pointer; color: var(--text);">
             <input type="checkbox" checked style="width: 16px; height: 16px; accent-color: var(--primary);"> Remember me
           </label>
-          <a href="pages.php?slug=contact-us" style="color: var(--link); font-weight: 600;">Forgot password?</a>
+          <a href="forgot-password.php" style="color: var(--link); font-weight: 600;">Forgot password?</a>
         </div>
         <button type="submit" class="btn btn-primary btn-block btn-lg" id="modalLoginSubmitBtn">Sign In to Account</button>
       </form>
