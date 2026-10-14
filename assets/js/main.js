@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initQuantitySteppers();
     initMobileNav();
     initBackToTop();
+    initNavDropdowns();
 });
 
 // Safe HTML Escaping Helper (XSS Prevention)
@@ -509,5 +510,39 @@ window.addEventListener('pageshow', () => {
         }
     });
 });
+
+// Navigation Mega Dropdowns Interaction Support
+function initNavDropdowns() {
+    const navItems = document.querySelectorAll('.nav-bar .nav-item');
+    if (!navItems.length) return;
+
+    navItems.forEach(item => {
+        const dropdown = item.querySelector('.mega-dropdown');
+        if (!dropdown) return;
+
+        // Mouse hover
+        item.addEventListener('mouseenter', () => {
+            navItems.forEach(other => { if (other !== item) other.classList.remove('is-open'); });
+            item.classList.add('is-open');
+        });
+        item.addEventListener('mouseleave', () => {
+            item.classList.remove('is-open');
+        });
+    });
+
+    // Close on outside click
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.nav-item')) {
+            navItems.forEach(item => item.classList.remove('is-open'));
+        }
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            navItems.forEach(item => item.classList.remove('is-open'));
+        }
+    });
+}
 
 

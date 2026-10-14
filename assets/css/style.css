@@ -417,14 +417,17 @@ h1, h2, h3, h4, h5, h6 {
   border-bottom: 1px solid var(--border);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
   position: relative;
-  z-index: 90;
+  z-index: 1000;
+  overflow: visible;
 }
 .nav-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
   white-space: nowrap;
-  gap: 1rem;
+  gap: 0.75rem;
+  overflow: visible;
+  position: relative;
 }
 .nav-menu {
   list-style: none;
@@ -433,12 +436,7 @@ h1, h2, h3, h4, h5, h6 {
   margin: 0;
   padding: 0;
   white-space: nowrap;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.nav-menu::-webkit-scrollbar {
-  display: none;
+  overflow: visible;
 }
 .nav-item {
   position: relative;
@@ -509,29 +507,60 @@ h1, h2, h3, h4, h5, h6 {
   background: rgba(226, 177, 67, 0.1);
 }
 
+@media (min-width: 769px) and (max-width: 1100px) {
+  .nav-link {
+    padding: 0.65rem 0.55rem;
+    font-size: 0.8125rem;
+    gap: 0.2rem;
+  }
+  .nav-track-order a {
+    padding: 0.4rem 0.45rem;
+    font-size: 0.78rem;
+  }
+}
+
 /* Mega Menu Dropdown */
 .mega-dropdown {
   position: absolute;
   top: 100%;
   left: 0;
-  min-width: 440px;
+  min-width: 460px;
   max-width: 680px;
   background: var(--surface);
   border-radius: 0 0 var(--radius-md) var(--radius-md);
-  box-shadow: var(--shadow-xl);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.16), 0 4px 12px rgba(0, 0, 0, 0.08);
   border: 1px solid var(--border);
   padding: 1.25rem 1.5rem;
   display: none;
-  z-index: 150;
+  z-index: 1200;
   color: var(--text);
+}
+.mega-dropdown::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: transparent;
 }
 .nav-item {
   position: relative;
 }
-.nav-item:hover .mega-dropdown {
+.nav-item:hover .mega-dropdown,
+.nav-item:focus-within .mega-dropdown,
+.nav-item.is-open .mega-dropdown {
   display: block;
-  animation: fadeInDown 0.2s ease-out forwards;
+  animation: fadeInDown 0.18s ease-out forwards;
 }
+
+/* Align right-side dropdowns to the right so they never overflow the viewport */
+.nav-item-more .mega-dropdown,
+.nav-menu > .nav-item:nth-last-child(-n+3) .mega-dropdown {
+  left: auto;
+  right: 0;
+}
+
 .dropdown-header-strip {
   display: flex;
   justify-content: space-between;
@@ -546,6 +575,9 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
   color: var(--primary);
 }
+[data-theme="dark"] .dropdown-header-title {
+  color: var(--gold);
+}
 .dropdown-view-all {
   font-size: 0.8125rem;
   color: var(--red-text);
@@ -557,28 +589,33 @@ h1, h2, h3, h4, h5, h6 {
 }
 .dropdown-categories-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
   gap: 0.5rem;
 }
 .dropdown-cat-chip {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.45rem 0.75rem;
+  padding: 0.55rem 0.85rem;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--text);
   text-decoration: none;
   font-size: 0.84rem;
-  font-weight: 500;
+  font-weight: 600;
   transition: all 0.15s ease;
 }
 .dropdown-cat-chip:hover {
   background: var(--primary);
   border-color: var(--primary);
-  color: #ffffff;
+  color: #ffffff !important;
   transform: translateX(2px);
+}
+[data-theme="dark"] .dropdown-cat-chip:hover {
+  background: var(--navy-2);
+  border-color: var(--gold);
+  color: #ffffff !important;
 }
 .dropdown-more-departments {
   display: grid;
@@ -1888,8 +1925,9 @@ footer.main-footer,
 /* Floating WhatsApp Direct Chat Button */
 .whatsapp-float {
   position: fixed;
-  bottom: 24px;
-  left: 24px;
+  bottom: 84px;
+  right: 24px;
+  left: auto;
   width: 48px;
   height: 48px;
   background: #25D366;

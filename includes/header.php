@@ -431,7 +431,7 @@ $ogImage = $ogImage ?? (SITE_URL . '/assets/brand/logo.png');
             <?php if (!empty($dept['categories'])): ?>
               <div class="mega-dropdown">
                 <div class="dropdown-header-strip">
-                  <span class="dropdown-header-title">🪷 <?= htmlspecialchars($dept['name']) ?> Categories</span>
+                  <span class="dropdown-header-title"><span style="color:var(--gold); margin-right:5px;">✦</span><?= htmlspecialchars($dept['name']) ?> Categories</span>
                   <a href="catalog.php?dept=<?= $dept['id'] ?>" class="dropdown-view-all">View All Products &rarr;</a>
                 </div>
                 <div class="dropdown-categories-grid">
@@ -453,14 +453,14 @@ $ogImage = $ogImage ?? (SITE_URL . '/assets/brand/logo.png');
             </a>
             <div class="mega-dropdown mega-dropdown-more">
               <div class="dropdown-header-strip">
-                <span class="dropdown-header-title">More Temple Departments</span>
+                <span class="dropdown-header-title"><span style="color:var(--gold); margin-right:5px;">✦</span>More Temple Departments</span>
                 <a href="catalog.php" class="dropdown-view-all">All Sacred Items &rarr;</a>
               </div>
               <div class="dropdown-more-departments">
                 <?php foreach (array_slice($navDepartments, 7) as $extraDept): ?>
                   <div class="more-dept-card">
                     <a href="catalog.php?dept=<?= $extraDept['id'] ?>" class="more-dept-heading">
-                      🪷 <?= htmlspecialchars($extraDept['name']) ?>
+                      <span style="color:var(--gold); margin-right:4px;">✦</span><?= htmlspecialchars($extraDept['name']) ?>
                     </a>
                     <?php if (!empty($extraDept['categories'])): ?>
                       <div class="more-dept-subcats">

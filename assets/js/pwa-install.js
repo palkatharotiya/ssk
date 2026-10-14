@@ -108,8 +108,8 @@
       headerBtn.onclick = triggerInstall;
     }
 
-    // Show Mobile Bottom Banner if not dismissed recently
-    if (!isDismissedRecently()) {
+    // Show Mobile Bottom Banner if on mobile and not dismissed recently
+    if (window.innerWidth <= 768 && !isDismissedRecently()) {
       showInstallBanner();
     }
   });
