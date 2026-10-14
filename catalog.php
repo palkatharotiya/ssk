@@ -80,34 +80,66 @@ $sql = "SELECT p.*, d.name as dept_name, c.name as cat_name
         LIMIT $perPage OFFSET $offset";
 $products = db_fetch_all($sql, $params);
 
-// Fetch all departments & categories for filter sidebar
-$allDepts = db_fetch_all("SELECT * FROM departments WHERE is_active = 1 ORDER BY sort_order ASC");
-$allCats = [];
-if ($deptId > 0) {
-    $allCats = db_fetch_all("SELECT * FROM categories WHERE department_id = ? AND is_active = 1 ORDER BY sort_order ASC", [$deptId]);
+// Fetch all departments & categories with real-time product counts
+$allDepts = db_fetch_all("
+    SELECT d.id, d.name, d.slug, COUNT(p.id) as product_count 
+    FROM departments d 
+    LEFT JOIN products p ON p.department_id = d.id AND p.is_active = 1 
+    WHERE d.is_active = 1 
+    GROUP BY d.id 
+    ORDER BY d.sort_order ASC, d.name ASC
+");
+
+// Resolve active category if passed
+$activeCat = null;
+if ($catId > 0) {
+    $activeCat = db_fetch_one("SELECT * FROM categories WHERE id = ?", [$catId]);
+    if ($activeCat && $deptId === 0 && !empty($activeCat['department_id'])) {
+        $deptId = (int)$activeCat['department_id'];
+    }
 }
 
-$pageTitle = 'Catalog — ' . SITE_NAME;
+// Resolve active department & its categories
+$activeDept = null;
+$allCats = [];
+if ($deptId > 0) {
+    $activeDept = db_fetch_one("SELECT * FROM departments WHERE id = ?", [$deptId]);
+    $allCats = db_fetch_all("
+        SELECT c.id, c.name, c.slug, c.department_id, COUNT(p.id) as product_count 
+        FROM categories c 
+        LEFT JOIN products p ON p.category_id = c.id AND p.is_active = 1 
+        WHERE c.department_id = ? AND c.is_active = 1 
+        GROUP BY c.id 
+        ORDER BY c.sort_order ASC, c.name ASC
+    ", [$deptId]);
+}
+
+$pageTitle = ($activeCat ? htmlspecialchars($activeCat['name']) . ' — ' : '') . 
+             ($activeDept ? htmlspecialchars($activeDept['name']) . ' — ' : '') . 
+             'Catalog — ' . SITE_NAME;
 require_once __DIR__ . '/includes/header.php';
 ?>
 
 <main class="container">
   
   <!-- Breadcrumbs -->
-  <div style="padding: 1.25rem 0 0.5rem; font-size: 0.875rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">
-    <a href="index.php">Home</a>
+  <div style="padding: 1.25rem 0 0.5rem; font-size: 0.875rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+    <a href="index.php" style="color: var(--text-muted); text-decoration: none;">Home</a>
     <span>/</span>
-    <a href="catalog.php">Catalog</a>
-    <?php if ($deptId > 0): ?>
-      <?php $activeDept = db_fetch_one("SELECT name FROM departments WHERE id = ?", [$deptId]); ?>
-      <?php if ($activeDept): ?>
+    <a href="catalog.php" style="color: var(--text-muted); text-decoration: none;">Catalog</a>
+    <?php if ($activeDept): ?>
+      <span>/</span>
+      <?php if ($activeCat): ?>
+        <a href="catalog.php?dept=<?= $activeDept['id'] ?>" style="color: var(--text-muted); text-decoration: none;"><?= htmlspecialchars($activeDept['name']) ?></a>
         <span>/</span>
-        <span style="color: var(--heading); font-weight: 600;"><?= htmlspecialchars($activeDept['name']) ?></span>
+        <span style="color: var(--heading); font-weight: 700;"><?= htmlspecialchars($activeCat['name']) ?></span>
+      <?php else: ?>
+        <span style="color: var(--heading); font-weight: 700;"><?= htmlspecialchars($activeDept['name']) ?></span>
       <?php endif; ?>
     <?php endif; ?>
     <?php if (!empty($searchQuery)): ?>
       <span>/</span>
-      <span style="color: var(--heading); font-weight: 600;">Search: "<?= htmlspecialchars($searchQuery) ?>"</span>
+      <span style="color: var(--heading); font-weight: 700;">Search: "<?= htmlspecialchars($searchQuery) ?>"</span>
     <?php endif; ?>
   </div>
 
@@ -120,40 +152,46 @@ require_once __DIR__ . '/includes/header.php';
         <a href="catalog.php" style="font-size: 0.8125rem; color: var(--red-text); font-weight: 600;">Reset All</a>
       </div>
 
-      <!-- Department Filter -->
+      <!-- Department Filter with Nested Categories Accordion -->
       <div class="filter-group">
         <div class="filter-label">Departments</div>
         <ul class="filter-list">
           <li class="filter-item">
-            <a href="catalog.php<?= $onSale ? '?on_sale=1' : '' ?>" style="display: block; font-size: 0.875rem; font-weight: <?= $deptId === 0 ? '700' : '500' ?>; color: <?= $deptId === 0 ? 'var(--red-text)' : 'var(--text)' ?>;">
-              All Departments
+            <a href="catalog.php<?= $onSale ? '?on_sale=1' : '' ?>" class="filter-dept-link <?= $deptId === 0 ? 'active' : '' ?>">
+              <span>All Departments</span>
+              <span class="count-badge"><?= array_sum(array_column($allDepts, 'product_count')) ?></span>
             </a>
           </li>
           <?php foreach ($allDepts as $d): ?>
-            <li class="filter-item">
-              <a href="catalog.php?dept=<?= $d['id'] ?><?= $onSale ? '&on_sale=1' : '' ?>" style="display: block; font-size: 0.875rem; font-weight: <?= $deptId === (int)$d['id'] ? '700' : '500' ?>; color: <?= $deptId === (int)$d['id'] ? 'var(--red-text)' : 'var(--text)' ?>;">
-                <?= htmlspecialchars($d['name']) ?>
+            <?php $isCurrentDept = ($deptId === (int)$d['id']); ?>
+            <li class="filter-item <?= $isCurrentDept ? 'is-active-dept' : '' ?>">
+              <a href="catalog.php?dept=<?= $d['id'] ?><?= $onSale ? '&on_sale=1' : '' ?>" class="filter-dept-link <?= $isCurrentDept ? 'active' : '' ?>">
+                <span><?= htmlspecialchars($d['name']) ?></span>
+                <span class="count-badge"><?= (int)$d['product_count'] ?></span>
               </a>
+
+              <!-- Nested Subcategories for the Active Department -->
+              <?php if ($isCurrentDept && !empty($allCats)): ?>
+                <ul class="filter-subcat-list">
+                  <li>
+                    <a href="catalog.php?dept=<?= $d['id'] ?><?= $onSale ? '&on_sale=1' : '' ?>" class="<?= $catId === 0 ? 'active' : '' ?>">
+                      <span>• All <?= htmlspecialchars($d['name']) ?></span>
+                    </a>
+                  </li>
+                  <?php foreach ($allCats as $c): ?>
+                    <li>
+                      <a href="catalog.php?dept=<?= $d['id'] ?>&cat=<?= $c['id'] ?><?= $onSale ? '&on_sale=1' : '' ?>" class="<?= $catId === (int)$c['id'] ? 'active' : '' ?>">
+                        <span>• <?= htmlspecialchars($c['name']) ?></span>
+                        <span class="count-badge"><?= (int)$c['product_count'] ?></span>
+                      </a>
+                    </li>
+                  <?php endforeach; ?>
+                </ul>
+              <?php endif; ?>
             </li>
           <?php endforeach; ?>
         </ul>
       </div>
-
-      <!-- Categories Filter (if Dept selected) -->
-      <?php if (!empty($allCats)): ?>
-        <div class="filter-group">
-          <div class="filter-label">Categories</div>
-          <ul class="filter-list">
-            <?php foreach ($allCats as $c): ?>
-              <li class="filter-item">
-                <a href="catalog.php?dept=<?= $deptId ?>&cat=<?= $c['id'] ?><?= $onSale ? '&on_sale=1' : '' ?>" style="display: block; font-size: 0.875rem; font-weight: <?= $catId === (int)$c['id'] ? '700' : '500' ?>; color: <?= $catId === (int)$c['id'] ? 'var(--red-text)' : 'var(--text)' ?>;">
-                  <?= htmlspecialchars($c['name']) ?>
-                </a>
-              </li>
-            <?php endforeach; ?>
-          </ul>
-        </div>
-      <?php endif; ?>
 
       <!-- Quick Toggle: On Sale -->
       <div class="filter-group">
@@ -169,6 +207,22 @@ require_once __DIR__ . '/includes/header.php';
     <!-- Main Products Listing -->
     <section>
       
+      <!-- Horizontal Category Pills for Active Department -->
+      <?php if (!empty($allCats)): ?>
+        <div class="category-pills-bar" aria-label="Filter by Category">
+          <a href="catalog.php?dept=<?= $deptId ?><?= $onSale ? '&on_sale=1' : '' ?>" class="category-pill <?= $catId === 0 ? 'active' : '' ?>">
+            <span>All <?= htmlspecialchars($activeDept['name'] ?? 'Items') ?></span>
+            <span class="pill-count"><?= array_sum(array_column($allCats, 'product_count')) ?></span>
+          </a>
+          <?php foreach ($allCats as $c): ?>
+            <a href="catalog.php?dept=<?= $deptId ?>&cat=<?= $c['id'] ?><?= $onSale ? '&on_sale=1' : '' ?>" class="category-pill <?= $catId === (int)$c['id'] ? 'active' : '' ?>">
+              <span><?= htmlspecialchars($c['name']) ?></span>
+              <span class="pill-count"><?= (int)$c['product_count'] ?></span>
+            </a>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
+
       <!-- Catalog Controls Header -->
       <div class="catalog-header">
         <div style="font-size: 0.9375rem; color: var(--text-muted);">

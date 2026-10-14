@@ -28,7 +28,8 @@ define('DB_CHARSET', 'utf8mb4');
 // Dynamic Site URL detection
 $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
 $proto = $isHttps ? 'https://' : 'http://';
-if (php_sapi_name() === 'cli') {
+$httpHost = $_SERVER['HTTP_HOST'] ?? '127.0.0.1:8000';
+if (php_sapi_name() === 'cli' && empty($_SERVER['HTTP_HOST'])) {
     $subDir = '';
 } else {
     $scriptPath = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
@@ -40,7 +41,7 @@ if (php_sapi_name() === 'cli') {
     }
 }
 
-define('SITE_URL', $proto . $httpHost . $subDir);
+define('SITE_URL', rtrim($proto . $httpHost . $subDir, '/'));
 define('SITE_NAME', 'SSK.STORE');
 define('SITE_TAGLINE', 'Shri Sahajanand Sahitya Kendra — Kalakunj Mandir, Surat');
 define('CURRENCY_SYMBOL', '₹');

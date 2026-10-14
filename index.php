@@ -139,6 +139,45 @@ require_once __DIR__ . '/includes/header.php';
     </div>
   </section>
 
+  <!-- Shop by Sacred Department Strip -->
+  <?php 
+    $homeDepts = db_fetch_all("
+      SELECT d.*, COUNT(p.id) as product_count 
+      FROM departments d 
+      LEFT JOIN products p ON p.department_id = d.id AND p.is_active = 1 
+      WHERE d.is_active = 1 
+      GROUP BY d.id 
+      ORDER BY d.sort_order ASC, d.name ASC
+    ");
+    $deptIcons = [
+      'Books' => '📖',
+      'Kanthis' => '📿',
+      'Japamalas' => '📿',
+      'Ghar Mandirs' => '🛕',
+      'Puja Items' => '🪔',
+      'Murtis' => '🕉️',
+      'Agarbatti & Dhoop' => '🌺',
+      'Clothing' => '👕',
+      'Calendars & Diaries' => '📅',
+      'Audio & Video' => '🎵',
+    ];
+  ?>
+  <section class="ssk-section-container" style="margin-top: 1.5rem; margin-bottom: 2rem;">
+    <div class="ssk-section-header">
+      <h2>Explore Sacred Departments</h2>
+      <a href="catalog.php" class="ssk-view-all">All Departments &rarr;</a>
+    </div>
+    <div class="dept-cards-grid">
+      <?php foreach ($homeDepts as $hd): ?>
+        <a href="catalog.php?dept=<?= $hd['id'] ?>" class="dept-card-item">
+          <span class="dept-card-icon"><?= $deptIcons[$hd['name']] ?? '🪷' ?></span>
+          <span class="dept-card-title"><?= htmlspecialchars($hd['name']) ?></span>
+          <span class="dept-card-count"><?= (int)$hd['product_count'] ?> items</span>
+        </a>
+      <?php endforeach; ?>
+    </div>
+  </section>
+
   <!-- Dynamic Admin-Ordered Product Showcase Sections -->
   <?php foreach ($sections as $sec): ?>
     <?php

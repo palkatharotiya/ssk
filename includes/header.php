@@ -247,9 +247,27 @@ $ogImage = $ogImage ?? (SITE_URL . '/assets/brand/logo.png');
           <span>📖</span> All Sacred Items
         </a>
         <?php foreach ($navDepartments as $dept): ?>
-          <a href="catalog.php?dept=<?= $dept['id'] ?>" class="mobile-drawer-link <?= (isset($_GET['dept']) && $_GET['dept'] == $dept['id']) ? 'active' : '' ?>">
-            <span>🪷</span> <?= htmlspecialchars($dept['name']) ?>
-          </a>
+          <div class="mobile-drawer-dept-item">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <a href="catalog.php?dept=<?= $dept['id'] ?>" class="mobile-drawer-link <?= (isset($_GET['dept']) && $_GET['dept'] == $dept['id']) ? 'active' : '' ?>" style="flex: 1;">
+                <span>🪷</span> <?= htmlspecialchars($dept['name']) ?>
+              </a>
+              <?php if (!empty($dept['categories'])): ?>
+                <button type="button" class="mobile-cat-expand-btn" onclick="var el = document.getElementById('mob-cats-<?= $dept['id'] ?>'); if(el){ el.style.display = (el.style.display === 'block' ? 'none' : 'block'); }" aria-label="Toggle <?= htmlspecialchars($dept['name']) ?> categories" style="background: none; border: none; padding: 0.6rem 0.85rem; color: var(--text-muted); cursor: pointer;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+              <?php endif; ?>
+            </div>
+            <?php if (!empty($dept['categories'])): ?>
+              <div class="mobile-drawer-cat-list" id="mob-cats-<?= $dept['id'] ?>" style="display: <?= (isset($_GET['dept']) && $_GET['dept'] == $dept['id']) ? 'block' : 'none' ?>; padding: 0.2rem 0 0.5rem 2.2rem; background: rgba(0,0,0,0.02);">
+                <?php foreach ($dept['categories'] as $cat): ?>
+                  <a href="catalog.php?dept=<?= $dept['id'] ?>&cat=<?= $cat['id'] ?>" class="mobile-drawer-sub-link <?= (isset($_GET['cat']) && $_GET['cat'] == $cat['id']) ? 'active' : '' ?>" style="display: block; padding: 0.35rem 0; font-size: 0.8125rem; color: var(--text-muted); text-decoration: none;">
+                    • <?= htmlspecialchars($cat['name']) ?>
+                  </a>
+                <?php endforeach; ?>
+              </div>
+            <?php endif; ?>
+          </div>
         <?php endforeach; ?>
         <a href="catalog.php?on_sale=1" class="mobile-drawer-link" style="color: var(--danger); font-weight: 700;">
           <span>🔥</span> Special Offers & Sale
@@ -412,28 +430,53 @@ $ogImage = $ogImage ?? (SITE_URL . '/assets/brand/logo.png');
 
             <?php if (!empty($dept['categories'])): ?>
               <div class="mega-dropdown">
-                <?php foreach (array_slice($dept['categories'], 0, 3) as $cat): ?>
-                  <div class="dropdown-col">
-                    <div class="dropdown-col-title">
-                      <a href="catalog.php?dept=<?= $dept['id'] ?>&cat=<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></a>
-                    </div>
-                    <?php if (!empty($cat['subcategories'])): ?>
-                      <ul class="dropdown-list">
-                        <?php foreach (array_slice($cat['subcategories'], 0, 5) as $sub): ?>
-                          <li>
-                            <a href="catalog.php?dept=<?= $dept['id'] ?>&cat=<?= $cat['id'] ?>&sub=<?= $sub['id'] ?>">
-                              <?= htmlspecialchars($sub['name']) ?>
-                            </a>
-                          </li>
-                        <?php endforeach; ?>
-                      </ul>
-                    <?php endif; ?>
-                  </div>
-                <?php endforeach; ?>
+                <div class="dropdown-header-strip">
+                  <span class="dropdown-header-title">🪷 <?= htmlspecialchars($dept['name']) ?> Categories</span>
+                  <a href="catalog.php?dept=<?= $dept['id'] ?>" class="dropdown-view-all">View All Products &rarr;</a>
+                </div>
+                <div class="dropdown-categories-grid">
+                  <?php foreach ($dept['categories'] as $cat): ?>
+                    <a href="catalog.php?dept=<?= $dept['id'] ?>&cat=<?= $cat['id'] ?>" class="dropdown-cat-chip">
+                      <span class="chip-text"><?= htmlspecialchars($cat['name']) ?></span>
+                    </a>
+                  <?php endforeach; ?>
+                </div>
               </div>
             <?php endif; ?>
           </li>
         <?php endforeach; ?>
+
+        <?php if (count($navDepartments) > 7): ?>
+          <li class="nav-item nav-item-more">
+            <a href="catalog.php" class="nav-link">
+              More <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </a>
+            <div class="mega-dropdown mega-dropdown-more">
+              <div class="dropdown-header-strip">
+                <span class="dropdown-header-title">More Temple Departments</span>
+                <a href="catalog.php" class="dropdown-view-all">All Sacred Items &rarr;</a>
+              </div>
+              <div class="dropdown-more-departments">
+                <?php foreach (array_slice($navDepartments, 7) as $extraDept): ?>
+                  <div class="more-dept-card">
+                    <a href="catalog.php?dept=<?= $extraDept['id'] ?>" class="more-dept-heading">
+                      🪷 <?= htmlspecialchars($extraDept['name']) ?>
+                    </a>
+                    <?php if (!empty($extraDept['categories'])): ?>
+                      <div class="more-dept-subcats">
+                        <?php foreach ($extraDept['categories'] as $extraCat): ?>
+                          <a href="catalog.php?dept=<?= $extraDept['id'] ?>&cat=<?= $extraCat['id'] ?>" class="more-subcat-link">
+                            <?= htmlspecialchars($extraCat['name']) ?>
+                          </a>
+                        <?php endforeach; ?>
+                      </div>
+                    <?php endif; ?>
+                  </div>
+                <?php endforeach; ?>
+              </div>
+            </div>
+          </li>
+        <?php endif; ?>
 
         <li class="nav-item">
           <a href="catalog.php?on_sale=1" class="nav-link" style="color: var(--danger);">
