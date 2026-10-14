@@ -3,25 +3,32 @@
  * BAPS Store - Admin Order Management
  */
 
-$adminPageTitle = 'Customer Orders';
-require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/includes/admin_bootstrap.php';
+admin_require_auth('orders');
 
 // Handle Status Update POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
-    if (!verify_csrf_token($_POST['csrf_token'] ?? '')) {
-        set_flash('error', 'Security token expired. Please refresh and try again.');
-        header('Location: orders.php' . (!empty($_POST['order_id']) ? '?order_id=' . (int)$_POST['order_id'] : ''));
+    $orderId = (int)($_POST['order_id'] ?? 0);
+    $newStatus = (string)($_POST['status'] ?? '');
+    $newPaymentStatus = (string)($_POST['payment_status'] ?? '');
+
+    $allowedStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+    $allowedPaymentStatuses = ['pending', 'paid', 'failed', 'refunded', 'pending_verification'];
+
+    if (!in_array($newStatus, $allowedStatuses, true) || !in_array($newPaymentStatus, $allowedPaymentStatuses, true)) {
+        set_flash('error', 'Invalid status value provided.');
+        header('Location: orders.php' . ($orderId > 0 ? '?order_id=' . $orderId : ''));
         exit;
     }
-    $orderId = (int)$_POST['order_id'];
-    $newStatus = $_POST['status'];
-    $newPaymentStatus = $_POST['payment_status'];
 
     db_query("UPDATE orders SET status = ?, payment_status = ? WHERE id = ?", [$newStatus, $newPaymentStatus, $orderId]);
     set_flash('success', 'Order status updated successfully.');
     header('Location: orders.php?order_id=' . $orderId);
     exit;
 }
+
+$adminPageTitle = 'Customer Orders';
+require_once __DIR__ . '/includes/header.php';
 
 $statusFilter = $_GET['status'] ?? 'all';
 $params = [];

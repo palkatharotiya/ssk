@@ -19,17 +19,17 @@
 
 ---
 
-## Phase 2: P0 Fixes (Site-Breaking & Security) — [READY TO EXECUTE]
-- [ ] **Task 2.1:** Create `includes/security.php` (CSRF, timing-safe checks, API origin checks, `e()` escape helper, security headers).
-- [ ] **Task 2.2:** Create `admin/includes/admin_bootstrap.php` (Auth check, `is_active` check, page-level RBAC, session idle timeout).
-- [ ] **Task 2.3:** Add `db_insert()` and `db_transaction()` to `includes/db.php`; set session timezone to `+05:30`.
-- [ ] **Task 2.4:** Build migration runner `tools/migrate.php` and migration `database/migrations/001_initial_schema_fixes.sql`.
-- [ ] **Task 2.5:** Fix `checkout.php` transaction, atomic portable stock decrement query, and server-side coupon verification.
-- [ ] **Task 2.6:** Fix `admin/products.php` authentication bypass and move action handlers behind `admin_bootstrap.php`.
-- [ ] **Task 2.7:** Convert all admin GET state mutations (`delete`, `logout`) to POST + CSRF token verification.
-- [ ] **Task 2.8:** Fix SQLite-only `datetime('now')` in `admin/homepage_sections.php`.
-- [ ] **Task 2.9:** Remove hardcoded default credentials from database seeds and create CLI tool `tools/create-admin.php`.
-- [ ] **Task 2.10:** Restrict SQLite fallback strictly to non-production environments and harden `.htaccess` against direct file downloads.
+## Phase 2: P0 Fixes (Site-Breaking & Security) — [COMPLETED]
+- [x] **Task 2.1:** Create `includes/security.php` (CSRF, timing-safe checks, API origin checks, `e()` escape helper, security headers).
+- [x] **Task 2.2:** Create `admin/includes/admin_bootstrap.php` (Auth check, `is_active` check, page-level RBAC, session idle timeout).
+- [x] **Task 2.3:** Add `db_insert()` and `db_transaction()` to `includes/db.php`; set session timezone to `+05:30`.
+- [x] **Task 2.4:** Build migration runner `tools/migrate.php` and migration `database/migrations/001_initial_schema_fixes.sql`.
+- [x] **Task 2.5:** Fix `checkout.php` transaction, atomic portable stock decrement query, and server-side coupon verification.
+- [x] **Task 2.6:** Fix `admin/products.php` authentication bypass and move action handlers behind `admin_bootstrap.php`.
+- [x] **Task 2.7:** Convert all admin GET state mutations (`delete`, `logout`) to POST + CSRF token verification.
+- [x] **Task 2.8:** Fix SQLite-only `datetime('now')` in `admin/homepage_sections.php`.
+- [x] **Task 2.9:** Remove hardcoded default credentials from database seeds and create CLI tool `tools/create-admin.php`.
+- [x] **Task 2.10:** Restrict SQLite fallback strictly to non-production environments and harden `.htaccess` against direct file downloads.
 
 ---
 

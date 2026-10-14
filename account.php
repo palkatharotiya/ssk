@@ -190,7 +190,7 @@ require_once __DIR__ . '/includes/header.php';
           Welcome back, <strong><?= htmlspecialchars($user['first_name'] . ' ' . $user['last_name']) ?></strong> (<?= htmlspecialchars($user['email']) ?>)
         </p>
       </div>
-      <a href="api/auth.php?action=logout" onclick="event.preventDefault(); fetch('api/auth.php?action=logout').then(() => window.location.href='index.php');" class="btn btn-secondary btn-sm" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.3);">
+      <a href="#" onclick="event.preventDefault(); fetch('api/auth.php', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': '<?= get_csrf_token() ?>' }, body: 'action=logout&csrf_token=<?= get_csrf_token() ?>' }).then(() => window.location.href='index.php');" class="btn btn-secondary btn-sm" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.3);">
         Sign Out
       </a>
     </div>

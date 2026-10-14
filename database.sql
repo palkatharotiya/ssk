@@ -329,9 +329,9 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('instagram_url', 'https://www.instagram.com/s_s_sahitya_kendra'),
 ('youtube_url', 'https://www.youtube.com');
 
--- Admin user (password: admin123)
-INSERT INTO admin_users (username, email, password, full_name, role, permissions) VALUES
-('admin', 'admin@sskstore.in', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'SSK Administrator', 'super_admin', '["*"]');
+-- Default admin account removed per security policy P0-4.
+-- Provision your initial administrator account securely via CLI:
+-- php tools/create-admin.php
 
 -- Departments
 INSERT INTO departments (id, name, slug, description, sort_order) VALUES
@@ -480,9 +480,7 @@ INSERT INTO shipping_zones (zone_name, min_order_free_shipping, flat_rate) VALUE
 ('Metro Cities', 750.00, 75.00),
 ('Rest of India', 750.00, 100.00);
 
--- Sample Customer (password: customer123)
-INSERT INTO customers (first_name, last_name, email, password, phone, is_active, email_verified) VALUES
-('Rajesh', 'Patel', 'rajesh@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '+919876543210', 1, 1);
+-- Default sample customer removed per security policy P0-4.
 
 -- CMS Pages
 INSERT INTO pages (title, slug, content) VALUES

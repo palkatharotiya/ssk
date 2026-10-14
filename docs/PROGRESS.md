@@ -11,8 +11,8 @@
 | Phase | Description | Status | Deliverables |
 |---|---|---|---|
 | **Phase 1** | Read & Analyze (No application code changed) | **COMPLETED** | `docs/AUDIT_REPORT.md`, `docs/IMPLEMENTATION_PLAN.md`, `docs/DECISIONS_NEEDED.md`, `docs/PROGRESS.md` |
-| **Phase 2** | P0 Fixes (Site-Breaking & Account Takeover Security) | **READY / PENDING APPROVAL** | Branch commits on `audit/hardening-and-speed` |
-| **Phase 3** | P1 + P2 Fixes (High/Medium Vulnerabilities & Logic Bugs) | Pending Phase 2 | Planned |
+| **Phase 2** | P0 Fixes (Site-Breaking & Account Takeover Security) | **COMPLETED** | Branch commits on `audit/hardening-and-speed` |
+| **Phase 3** | P1 + P2 Fixes (High/Medium Vulnerabilities & Logic Bugs) | **READY TO EXECUTE** | Planned |
 | **Phase 4** | Speed Optimization (Images WebP/AVIF, CSS/JS minification, DB) | Pending Phase 3 | Planned |
 | **Phase 5** | SEO, PWA, Android App & Branding Cleanup | Pending Phase 4 | Planned |
 | **Phase 6** | Self-Verification Matrix & Final Audit Report | Pending Phase 5 | `docs/TEST_REPORT.md`, `docs/PERFORMANCE_REPORT.md` |

@@ -4,6 +4,7 @@
  * Shree Sahajanand Sahitya Kendra (Kalakunj Mandir)
  */
 
+require_once __DIR__ . '/includes/admin_bootstrap.php';
 $adminPageTitle = 'Departments & Categories';
 require_once __DIR__ . '/includes/header.php';
 
@@ -70,10 +71,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_cat'])) {
     }
 }
 
-// Handle Delete Department
-if (isset($_GET['delete_dept'])) {
-    $delDeptId = (int)$_GET['delete_dept'];
-    // Check if department has products
+// Handle Delete Department via POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_dept'])) {
+    require_csrf();
+    $delDeptId = (int)$_POST['dept_id'];
     $prodCount = (int)(db_fetch_one("SELECT COUNT(*) as c FROM products WHERE department_id = ?", [$delDeptId])['c'] ?? 0);
     if ($prodCount > 0) {
         set_flash('error', "Cannot delete department: It currently contains $prodCount products. Please reassign or delete the products first.");
@@ -86,9 +87,10 @@ if (isset($_GET['delete_dept'])) {
     exit;
 }
 
-// Handle Delete Category
-if (isset($_GET['delete_cat'])) {
-    $delCatId = (int)$_GET['delete_cat'];
+// Handle Delete Category via POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_cat'])) {
+    require_csrf();
+    $delCatId = (int)$_POST['cat_id'];
     $prodCount = (int)(db_fetch_one("SELECT COUNT(*) as c FROM products WHERE category_id = ?", [$delCatId])['c'] ?? 0);
     if ($prodCount > 0) {
         set_flash('error', "Cannot delete category: It currently contains $prodCount products.");
@@ -234,7 +236,7 @@ $deptIcons = [
     <input type="hidden" name="save_cat" value="1">
     <input type="hidden" name="cat_id" id="modalCatId" value="<?= $editCat['id'] ?? 0 ?>">
 
-    <div style="display: grid; grid-template-columns: 1fr 1fr 100px; gap: 1rem; margin-bottom: 1rem;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr 100px 100px; gap: 1rem; margin-bottom: 1rem;">
       <div>
         <label class="admin-label">Parent Department *</label>
         <select name="department_id" id="modalDeptSelect" class="admin-select" required>
@@ -252,6 +254,13 @@ $deptIcons = [
       <div>
         <label class="admin-label">Sort Order</label>
         <input type="number" name="sort_order" class="admin-input" value="<?= htmlspecialchars($editCat['sort_order'] ?? 10) ?>">
+      </div>
+      <div>
+        <label class="admin-label">Status</label>
+        <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.6rem; cursor: pointer;">
+          <input type="checkbox" name="is_active" value="1" <?= (!$editCat || !empty($editCat['is_active'])) ? 'checked' : '' ?>>
+          <strong>Active</strong>
+        </label>
       </div>
     </div>
 
@@ -303,9 +312,12 @@ $deptIcons = [
           <a href="categories.php?edit_dept=<?= $dId ?>" class="admin-btn admin-btn-secondary admin-btn-sm" title="Edit department">
             Edit
           </a>
-          <a href="categories.php?delete_dept=<?= $dId ?>" onclick="return confirm('Delete this department? Warning: Categories must have 0 products.');" class="admin-btn admin-btn-danger admin-btn-sm" title="Delete department">
-            Del
-          </a>
+          <form method="POST" action="categories.php" style="display: inline;" onsubmit="return confirm('Delete this department? Warning: Categories must have 0 products.');">
+            <?= csrf_field() ?>
+            <input type="hidden" name="delete_dept" value="1">
+            <input type="hidden" name="dept_id" value="<?= $dId ?>">
+            <button type="submit" class="admin-btn admin-btn-danger admin-btn-sm" title="Delete department">Del</button>
+          </form>
         </div>
       </div>
 
@@ -333,9 +345,12 @@ $deptIcons = [
                 <a href="categories.php?edit_cat=<?= $sc['id'] ?>" class="admin-btn admin-btn-secondary admin-btn-sm" style="padding: 0.2rem 0.45rem; font-size: 0.7rem;" title="Edit category">
                   ✎
                 </a>
-                <a href="categories.php?delete_cat=<?= $sc['id'] ?>" onclick="return confirm('Delete category: <?= htmlspecialchars(addslashes($sc['name'])) ?>?');" class="admin-btn admin-btn-danger admin-btn-sm" style="padding: 0.2rem 0.45rem; font-size: 0.7rem;" title="Delete category">
-                  &times;
-                </a>
+                <form method="POST" action="categories.php" style="display: inline;" onsubmit="return confirm('Delete category: <?= htmlspecialchars(addslashes($sc['name'])) ?>?');">
+                  <?= csrf_field() ?>
+                  <input type="hidden" name="delete_cat" value="1">
+                  <input type="hidden" name="cat_id" value="<?= $sc['id'] ?>">
+                  <button type="submit" class="admin-btn admin-btn-danger admin-btn-sm" style="padding: 0.2rem 0.45rem; font-size: 0.7rem;" title="Delete category">&times;</button>
+                </form>
               </div>
             </div>
           <?php endforeach; ?>

@@ -4,18 +4,27 @@
  * Shree Sahajanand Sahitya Kendra (Kalakunj Mandir)
  */
 
-require_once __DIR__ . '/../includes/config.php';
-require_once __DIR__ . '/../includes/db.php';
-require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/includes/admin_bootstrap.php';
 
 $action = $_GET['action'] ?? 'list';
 $editId = (int)($_GET['edit'] ?? 0);
 
-// Handle Product Delete
-if (isset($_GET['delete'])) {
-    $delId = (int)$_GET['delete'];
-    db_query("DELETE FROM products WHERE id = ?", [$delId]);
-    set_flash('success', 'Product deleted successfully.');
+// Handle Product Delete via POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_product') {
+    require_csrf();
+    $delId = (int)($_POST['product_id'] ?? 0);
+    if ($delId > 0) {
+        $hasOrders = (int)(db_fetch_one("SELECT COUNT(*) as c FROM order_items WHERE product_id = ?", [$delId])['c'] ?? 0);
+        if ($hasOrders > 0) {
+            db_query("UPDATE products SET is_active = 0 WHERE id = ?", [$delId]);
+            set_flash('success', "Product #{$delId} is referenced in customer orders and has been set to Draft/Archived.");
+        } else {
+            db_query("DELETE FROM cart WHERE product_id = ?", [$delId]);
+            db_query("DELETE FROM wishlist WHERE product_id = ?", [$delId]);
+            db_query("DELETE FROM products WHERE id = ?", [$delId]);
+            set_flash('success', 'Product deleted successfully.');
+        }
+    }
     header('Location: products.php');
     exit;
 }
@@ -560,9 +569,12 @@ $totalStoreProducts = (int)(db_fetch_one("SELECT COUNT(*) as c FROM products")['
                     <a href="products.php?edit=<?= $p['id'] ?>" class="admin-btn admin-btn-secondary admin-btn-sm" title="Edit Product">
                       Edit
                     </a>
-                    <a href="products.php?delete=<?= $p['id'] ?>" onclick="return confirm('Are you sure you want to delete this product?');" class="admin-btn admin-btn-danger admin-btn-sm" title="Delete Product">
-                      Del
-                    </a>
+                    <form method="POST" action="products.php" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this product?');">
+                      <?= csrf_field() ?>
+                      <input type="hidden" name="action" value="delete_product">
+                      <input type="hidden" name="product_id" value="<?= $p['id'] ?>">
+                      <button type="submit" class="admin-btn admin-btn-danger admin-btn-sm" title="Delete Product">Del</button>
+                    </form>
                   </div>
                 </td>
               </tr>

@@ -254,7 +254,7 @@ document.getElementById('coupon-form')?.addEventListener('submit', (e) => {
   fetch('api/coupon.php', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ code: code, subtotal: '<?= $subtotal ?>' })
+    body: new URLSearchParams({ code: code })
   })
   .then(r => r.json())
   .then(data => {

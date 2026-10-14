@@ -25,9 +25,18 @@ class DB {
             ];
             self::$pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
             self::$driver = 'mysql';
+            // Set session timezone to IST (+05:30)
+            self::$pdo->exec("SET time_zone = '+05:30'");
             return self::$pdo;
         } catch (PDOException $e) {
-            // Fallback to SQLite for zero-config portable execution
+            // In production, NEVER silently switch to SQLite; show maintenance error and log
+            if (defined('IS_PRODUCTION') && IS_PRODUCTION) {
+                error_log("Production Database Connection Error: " . $e->getMessage());
+                http_response_code(503);
+                die("<!DOCTYPE html><html><head><title>Service Temporarily Unavailable</title></head><body style='font-family:sans-serif;text-align:center;padding:50px;'><h2>Site Maintenance</h2><p>SSK Store is currently undergoing scheduled maintenance. Please check back shortly.</p></body></html>");
+            }
+
+            // Fallback to SQLite for zero-config portable local development
             $sqlitePath = ROOT_PATH . 'baps_store.sqlite';
             $needsInit = !file_exists($sqlitePath) || filesize($sqlitePath) === 0;
 
@@ -37,6 +46,7 @@ class DB {
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 ]);
                 self::$driver = 'sqlite';
+                self::$pdo->exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;");
 
                 if ($needsInit) {
                     self::initializeSqliteSchema(self::$pdo);
@@ -44,7 +54,9 @@ class DB {
 
                 return self::$pdo;
             } catch (Exception $ex) {
-                die("Database connection failed: " . $ex->getMessage());
+                error_log("SQLite Connection Error: " . $ex->getMessage());
+                http_response_code(503);
+                die("Database connection failed. Please ensure MySQL is running or permissions are correct.");
             }
         }
     }
@@ -332,15 +344,8 @@ class DB {
             $stmt->execute($s);
         }
 
-        // Admin User (admin / admin123)
-        $adminHash = password_hash('admin123', PASSWORD_DEFAULT);
-        $db->prepare("INSERT OR IGNORE INTO admin_users (username, email, password, full_name, role) VALUES (?, ?, ?, ?, ?)")
-           ->execute(['admin', 'admin@baps.store', $adminHash, 'BAPS Administrator', 'super_admin']);
-
-        // Sample customer (customer / customer123)
-        $custHash = password_hash('customer123', PASSWORD_DEFAULT);
-        $db->prepare("INSERT OR IGNORE INTO customers (first_name, last_name, email, password, phone, is_active, email_verified) VALUES (?, ?, ?, ?, ?, 1, 1)")
-           ->execute(['Rajesh', 'Patel', 'rajesh@example.com', $custHash, '+919876543210']);
+        // Note: Default admin and customer accounts removed per security policy P0-4.
+        // Use `php tools/create-admin.php` via CLI to provision admin accounts.
 
         // Coupons
         $db->prepare("INSERT OR IGNORE INTO coupons (code, type, value, min_order_amount, is_active) VALUES (?, ?, ?, ?, 1)")
@@ -527,4 +532,31 @@ function db_fetch_one(string $sql, array $params = []): ?array {
 
 function db_last_insert_id(): string {
     return get_db()->lastInsertId();
+}
+
+function db_insert(string $sql, array $params = []): int {
+    $db = get_db();
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+    return (int)$db->lastInsertId();
+}
+
+function db_transaction(callable $callback) {
+    $db = get_db();
+    $alreadyInTransaction = $db->inTransaction();
+    if (!$alreadyInTransaction) {
+        $db->beginTransaction();
+    }
+    try {
+        $result = $callback($db);
+        if (!$alreadyInTransaction) {
+            $db->commit();
+        }
+        return $result;
+    } catch (\Throwable $e) {
+        if (!$alreadyInTransaction && $db->inTransaction()) {
+            $db->rollBack();
+        }
+        throw $e;
+    }
 }

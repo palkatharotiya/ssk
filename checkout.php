@@ -36,13 +36,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $firstName = trim($_POST['first_name'] ?? '');
         $lastName = trim($_POST['last_name'] ?? '');
-        $email = trim($_POST['email'] ?? '');
+        $email = trim(strtolower($_POST['email'] ?? ''));
         $phone = trim($_POST['phone'] ?? '');
         $address = trim($_POST['address'] ?? '');
         $city = trim($_POST['city'] ?? '');
         $state = trim($_POST['state'] ?? 'Gujarat');
         $pincode = trim($_POST['pincode'] ?? '');
-        $paymentMethod = $_POST['payment_method'] ?? 'UPI';
+        $paymentMethod = strtoupper(trim($_POST['payment_method'] ?? 'UPI'));
+
+        if (!in_array($paymentMethod, ['UPI', 'COD'], true)) {
+            $paymentMethod = 'UPI';
+        }
 
         // Clean phone digits
         $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
@@ -52,80 +56,143 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (empty($firstName) || empty($lastName) || empty($email) || empty($phone) || empty($address) || empty($city) || empty($pincode)) {
             $error = 'Please fill in all required shipping and contact details.';
+        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $error = 'Please provide a valid email address.';
         } elseif (strlen($cleanPhone) < 10) {
             $error = 'Please enter a valid 10-digit mobile phone number.';
         } elseif (strlen(preg_replace('/[^0-9]/', '', $pincode)) !== 6) {
             $error = 'Please enter a valid 6-digit postal PIN code.';
         } else {
-            $shipping = calculate_shipping($subtotal - $discount, $state);
-            $total = max(0, $subtotal - $discount + $shipping);
-            $orderNumber = 'SSK-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(3)));
+            try {
+                $orderId = db_transaction(function(PDO $pdo) use (
+                    $cartItems, $subtotal, $currentUser, $firstName, $lastName, $email,
+                    $cleanPhone, $address, $city, $state, $pincode, $paymentMethod
+                ) {
+                    // 1. Re-validate inventory for each cart item inside transaction
+                    foreach ($cartItems as $item) {
+                        $prod = db_fetch_one("SELECT id, name, stock_qty, price, sale_price, is_active FROM products WHERE id = ?", [$item['id']]);
+                        if (!$prod || !$prod['is_active']) {
+                            throw new RuntimeException("Sorry, '{$item['name']}' is no longer available.");
+                        }
+                        if ($prod['stock_qty'] < (int)$item['quantity']) {
+                            throw new RuntimeException("Sorry, only {$prod['stock_qty']} unit(s) of '{$item['name']}' are available in stock.");
+                        }
+                    }
 
-            $customerId = $currentUser['id'] ?? null;
-            if (!$customerId) {
-                // Find or create guest customer
-                $existing = db_fetch_one("SELECT id FROM customers WHERE email = ?", [$email]);
-                if ($existing) {
-                    $customerId = $existing['id'];
-                } else {
-                    $randPass = password_hash(bin2hex(random_bytes(8)), PASSWORD_DEFAULT);
-                    db_query("INSERT INTO customers (first_name, last_name, email, password, phone, is_active) VALUES (?, ?, ?, ?, ?, 1)", [
-                        $firstName, $lastName, $email, $randPass, '+91 ' . $cleanPhone
+                    // 2. Re-validate coupon from database
+                    $discount = 0.0;
+                    if (!empty($_SESSION['applied_coupon']['code'])) {
+                        $cCode = trim(strtoupper($_SESSION['applied_coupon']['code']));
+                        $cRow = db_fetch_one("SELECT * FROM coupons WHERE code = ? AND is_active = 1", [$cCode]);
+                        if ($cRow) {
+                            $today = date('Y-m-d');
+                            $validDates = (empty($cRow['start_date']) || $cRow['start_date'] <= $today) &&
+                                         (empty($cRow['end_date']) || $cRow['end_date'] >= $today);
+                            $validUses = empty($cRow['max_uses']) || ((int)$cRow['used_count'] < (int)$cRow['max_uses']);
+                            $validMin = $subtotal >= (float)$cRow['min_order_amount'];
+
+                            if ($validDates && $validUses && $validMin) {
+                                if ($cRow['type'] === 'percentage') {
+                                    $discount = round(($subtotal * (float)$cRow['value']) / 100, 2);
+                                } else {
+                                    $discount = min($subtotal, (float)$cRow['value']);
+                                }
+                                $discount = min($discount, $subtotal);
+                                // Increment used_count atomically
+                                db_query("UPDATE coupons SET used_count = used_count + 1 WHERE id = ?", [$cRow['id']]);
+                            }
+                        }
+                    }
+
+                    // 3. Calculate shipping and final total
+                    $shipping = calculate_shipping($subtotal - $discount, $state);
+                    $total = max(0, $subtotal - $discount + $shipping);
+                    $orderNumber = 'SSK-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(3)));
+
+                    // 4. Resolve Customer ID safely
+                    $customerId = $currentUser['id'] ?? null;
+                    if (!$customerId) {
+                        $existingGuest = db_fetch_one("SELECT id FROM customers WHERE email = ? AND is_guest = 1", [$email]);
+                        if ($existingGuest) {
+                            $customerId = (int)$existingGuest['id'];
+                        } else {
+                            $existingReg = db_fetch_one("SELECT id FROM customers WHERE email = ? AND (is_guest IS NULL OR is_guest = 0)", [$email]);
+                            if ($existingReg) {
+                                $randPass = password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT);
+                                $customerId = db_insert("INSERT INTO customers (first_name, last_name, email, password, phone, is_active, is_guest) VALUES (?, ?, ?, ?, ?, 1, 1)", [
+                                    $firstName, $lastName, 'guest_' . bin2hex(random_bytes(4)) . '_' . $email, $randPass, '+91 ' . $cleanPhone
+                                ]);
+                            } else {
+                                $randPass = password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT);
+                                $customerId = db_insert("INSERT INTO customers (first_name, last_name, email, password, phone, is_active, is_guest) VALUES (?, ?, ?, ?, ?, 1, 1)", [
+                                    $firstName, $lastName, $email, $randPass, '+91 ' . $cleanPhone
+                                ]);
+                            }
+                        }
+                    }
+
+                    // 5. Insert Order
+                    $paymentStatus = ($paymentMethod === 'COD') ? 'pending' : 'pending_verification';
+                    $fullName = $firstName . ' ' . $lastName;
+                    $formattedPhone = '+91 ' . $cleanPhone;
+
+                    $orderId = db_insert("INSERT INTO orders (customer_id, order_number, status, payment_status, payment_method, subtotal, shipping_charge, discount, total, shipping_name, shipping_phone, shipping_address, shipping_city, shipping_state, shipping_pincode) 
+                                          VALUES (?, ?, 'processing', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [
+                        $customerId,
+                        $orderNumber,
+                        $paymentStatus,
+                        $paymentMethod,
+                        $subtotal,
+                        $shipping,
+                        $discount,
+                        $total,
+                        $fullName,
+                        $formattedPhone,
+                        $address,
+                        $city,
+                        $state,
+                        $pincode
                     ]);
-                    $customerId = (int)db_last_insert_id();
-                }
+
+                    // 6. Insert Order Items & decrement stock atomically
+                    foreach ($cartItems as $item) {
+                        $itemTotal = (float)$item['unit_price'] * (int)$item['quantity'];
+                        db_query("INSERT INTO order_items (order_id, product_id, product_name, product_sku, quantity, price, total) VALUES (?, ?, ?, ?, ?, ?, ?)", [
+                            $orderId,
+                            $item['id'],
+                            $item['name'],
+                            $item['sku'] ?? ('SSK-' . $item['id']),
+                            $item['quantity'],
+                            $item['unit_price'],
+                            $itemTotal
+                        ]);
+
+                        // Portable atomic decrement query (works on MySQL AND SQLite)
+                        $updateStmt = db_query("UPDATE products SET stock_qty = stock_qty - ? WHERE id = ? AND stock_qty >= ?", [
+                            $item['quantity'], $item['id'], $item['quantity']
+                        ]);
+
+                        if ($updateStmt->rowCount() === 0) {
+                            throw new RuntimeException("Insufficient stock for item: '{$item['name']}'.");
+                        }
+                    }
+
+                    return $orderId;
+                });
+
+                // Clear Cart & Coupon upon confirmed transaction
+                clear_cart();
+                unset($_SESSION['applied_coupon']);
+                $_SESSION['last_order_id'] = $orderId;
+
+                // Redirect to confirmation receipt page
+                header('Location: order-success.php?id=' . $orderId);
+                exit;
+
+            } catch (\Throwable $e) {
+                error_log("Checkout Transaction Failure: " . $e->getMessage());
+                $error = $e->getMessage();
             }
-
-            // Insert Order
-            $orderSql = "INSERT INTO orders (customer_id, order_number, status, payment_status, payment_method, subtotal, shipping_charge, discount, total, shipping_name, shipping_phone, shipping_address, shipping_city, shipping_state, shipping_pincode) 
-                         VALUES (?, ?, 'processing', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            
-            // Honest payment status: UPI/Card pending verification, COD pending
-            $paymentStatus = (strtoupper($paymentMethod) === 'COD') ? 'pending' : 'pending_verification';
-            $fullName = $firstName . ' ' . $lastName;
-            $formattedPhone = '+91 ' . $cleanPhone;
-
-            db_query($orderSql, [
-                $customerId,
-                $orderNumber,
-                $paymentStatus,
-                strtoupper($paymentMethod),
-                $subtotal,
-                $shipping,
-                $discount,
-                $total,
-                $fullName,
-                $formattedPhone,
-                $address,
-                $city,
-                $state,
-                $pincode
-            ]);
-            $orderId = (int)db_last_insert_id();
-
-            // Insert Order Items & reduce stock safely
-            foreach ($cartItems as $item) {
-                $itemTotal = (float)$item['unit_price'] * (int)$item['quantity'];
-                db_query("INSERT INTO order_items (order_id, product_id, product_name, product_sku, quantity, price, total) VALUES (?, ?, ?, ?, ?, ?, ?)", [
-                    $orderId,
-                    $item['id'],
-                    $item['name'],
-                    $item['sku'] ?? ('SSK-' . $item['id']),
-                    $item['quantity'],
-                    $item['unit_price'],
-                    $itemTotal
-                ]);
-                db_query("UPDATE products SET stock_qty = MAX(0, stock_qty - ?) WHERE id = ?", [$item['quantity'], $item['id']]);
-            }
-
-            // Clear Cart & Coupon
-            clear_cart();
-            unset($_SESSION['applied_coupon']);
-            $_SESSION['last_order_id'] = $orderId;
-
-            // Redirect to confirmation page
-            header('Location: order-success.php?id=' . $orderId);
-            exit;
         }
     }
 }

@@ -4,8 +4,23 @@
  * Shree Sahajanand Sahitya Kendra (Kalakunj Mandir)
  */
 
+require_once __DIR__ . '/includes/admin_bootstrap.php';
+admin_require_auth('dashboard');
+
 $adminPageTitle = 'Dashboard Overview';
 require_once __DIR__ . '/includes/header.php';
+
+// Security Alert Check for Default/Known Credentials (P0-4)
+$allAdmins = db_fetch_all("SELECT id, username, email, password FROM admin_users WHERE is_active = 1");
+$hasDefaultAccount = false;
+$defaultAccountDetails = '';
+foreach ($allAdmins as $da) {
+    if (password_verify('admin123', $da['password']) || password_verify('password', $da['password']) || $da['password'] === '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi') {
+        $hasDefaultAccount = true;
+        $defaultAccountDetails = $da['username'];
+        break;
+    }
+}
 
 // Calculate Key Metrics
 $revRow = db_fetch_one("SELECT SUM(total) as revenue FROM orders WHERE status != 'cancelled'");
@@ -38,6 +53,25 @@ $lowStockProducts = db_fetch_all("SELECT id, name, sku, stock_qty, price
                                   WHERE is_active = 1 AND stock_qty <= 15 
                                   ORDER BY stock_qty ASC LIMIT 5");
 ?>
+
+<?php if ($hasDefaultAccount): ?>
+  <div style="background: #fef2f2; border: 2px solid #ef4444; border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; box-shadow: 0 4px 12px rgba(239,68,68,0.15);">
+    <div style="display: flex; align-items: center; gap: 1rem;">
+      <span style="font-size: 2rem;">🚨</span>
+      <div>
+        <h4 style="margin: 0 0 0.25rem 0; color: #991b1b; font-size: 1.05rem; font-weight: 800;">
+          CRITICAL SECURITY RISK: Default Administrator Credentials Detected
+        </h4>
+        <p style="margin: 0; color: #b91c1c; font-size: 0.875rem;">
+          Account <strong><?= htmlspecialchars($defaultAccountDetails) ?></strong> is using a known default factory password. You must change this password immediately to prevent unauthorized access.
+        </p>
+      </div>
+    </div>
+    <a href="admin_users.php" class="admin-btn admin-btn-danger" style="white-space: nowrap; font-weight: 700;">
+      🛡️ Change Password Now &rarr;
+    </a>
+  </div>
+<?php endif; ?>
 
 <!-- Welcome Banner -->
 <div class="welcome-banner">

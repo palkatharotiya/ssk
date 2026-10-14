@@ -3,56 +3,10 @@
  * SSK Store - Admin Header & Layout with Role-Based Access Control (RBAC)
  */
 
-require_once __DIR__ . '/../../includes/config.php';
-require_once __DIR__ . '/../../includes/db.php';
-require_once __DIR__ . '/../../includes/functions.php';
+require_once __DIR__ . '/admin_bootstrap.php';
 
-// Check admin authentication
-if (!is_admin_logged_in() && basename($_SERVER['PHP_SELF']) !== 'login.php') {
-    header('Location: login.php');
-    exit;
-}
-
-$admin = current_admin();
-$currentPage = basename($_SERVER['PHP_SELF']);
-
-// Permission Map for Admin Pages
-$pagePermMap = [
-    'index.php' => 'dashboard',
-    'orders.php' => 'orders',
-    'products.php' => 'products',
-    'bulk_import.php' => 'products',
-    'categories.php' => 'categories',
-    'customers.php' => 'customers',
-    'coupons.php' => 'coupons',
-    'homepage_sections.php' => 'homepage_sections',
-    'banners.php' => 'banners',
-    'messages.php' => 'messages',
-    'admin_users.php' => 'admin_users',
-];
-
-// Enforce Page-Level RBAC Access
-if ($currentPage !== 'login.php' && $currentPage !== 'logout.php') {
-    if (isset($pagePermMap[$currentPage])) {
-        $requiredPerm = $pagePermMap[$currentPage];
-        if (!admin_has_permission($requiredPerm, $admin)) {
-            // Find first permitted page to redirect to
-            $allPerms = get_all_admin_permissions();
-            $redirectTarget = 'logout.php';
-            foreach ($allPerms as $pKey => $pInfo) {
-                if ($pKey !== $requiredPerm && admin_has_permission($pKey, $admin)) {
-                    $redirectTarget = $pInfo['file'];
-                    break;
-                }
-            }
-            set_flash('error', 'Access Denied: You do not have permission to access that section.');
-            if ($redirectTarget !== $currentPage) {
-                header('Location: ' . $redirectTarget);
-                exit;
-            }
-        }
-    }
-}
+$admin = $currentAdmin ?? current_admin();
+$currentPage = basename($_SERVER['PHP_SELF'] ?? '');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -167,7 +121,10 @@ if ($currentPage !== 'login.php' && $currentPage !== 'logout.php') {
       <a href="../index.php" target="_blank" class="sidebar-link" style="margin-top: auto;">
         <span>🌐</span> View Live Website ↗
       </a>
-      <a href="logout.php" class="sidebar-link" style="color: #ef4444;">
+      <form id="adminLogoutForm" method="POST" action="logout.php" style="display: none;">
+        <?= csrf_field() ?>
+      </form>
+      <a href="logout.php" onclick="event.preventDefault(); document.getElementById('adminLogoutForm').submit();" class="sidebar-link" style="color: #ef4444; cursor: pointer;">
         <span>🚪</span> Sign Out
       </a>
     </nav>

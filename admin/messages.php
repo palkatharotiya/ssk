@@ -3,16 +3,25 @@
  * BAPS Store - Admin Inquiries & Messages
  */
 
+require_once __DIR__ . '/includes/admin_bootstrap.php';
+admin_require_auth('messages');
+
+// Handle POST actions
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
+    if ($action === 'mark_read') {
+        $msgId = (int)($_POST['id'] ?? 0);
+        if ($msgId > 0) {
+            db_query("UPDATE contact_messages SET is_read = 1 WHERE id = ?", [$msgId]);
+            set_flash('success', 'Message marked as read.');
+        }
+        header('Location: messages.php');
+        exit;
+    }
+}
+
 $adminPageTitle = 'Customer Inquiries';
 require_once __DIR__ . '/includes/header.php';
-
-// Mark as read
-if (isset($_GET['mark_read'])) {
-    $msgId = (int)$_GET['mark_read'];
-    db_query("UPDATE contact_messages SET is_read = 1 WHERE id = ?", [$msgId]);
-    header('Location: messages.php');
-    exit;
-}
 
 $messages = db_fetch_all("SELECT * FROM contact_messages ORDER BY id DESC");
 ?>
@@ -47,9 +56,14 @@ $messages = db_fetch_all("SELECT * FROM contact_messages ORDER BY id DESC");
             <?= nl2br(htmlspecialchars($m['message'])) ?>
           </p>
           <?php if (!$m['is_read']): ?>
-            <a href="messages.php?mark_read=<?= $m['id'] ?>" class="admin-btn admin-btn-secondary admin-btn-sm">
-              Mark as Read
-            </a>
+            <form method="POST" action="messages.php" style="display: inline;">
+              <?= csrf_field() ?>
+              <input type="hidden" name="action" value="mark_read">
+              <input type="hidden" name="id" value="<?= $m['id'] ?>">
+              <button type="submit" class="admin-btn admin-btn-secondary admin-btn-sm">
+                Mark as Read
+              </button>
+            </form>
           <?php endif; ?>
         </div>
       <?php endforeach; ?>

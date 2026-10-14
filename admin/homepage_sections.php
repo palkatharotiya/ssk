@@ -4,11 +4,13 @@
  * Controls display order (which shows 1st, 2nd, 3rd, 4th), titles, and visibility
  */
 
+require_once __DIR__ . '/includes/admin_bootstrap.php';
 $adminPageTitle = 'Homepage Sections Layout';
 require_once __DIR__ . '/includes/header.php';
 
 // Handle POST actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_csrf();
     $action = $_POST['action'] ?? '';
 
     if ($action === 'reorder_all') {
@@ -16,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         foreach ($orders as $secId => $sortOrder) {
             $secId = (int)$secId;
             $sortOrder = (int)$sortOrder;
-            db_query("UPDATE homepage_sections SET sort_order = ?, updated_at = datetime('now') WHERE id = ?", [$sortOrder, $secId]);
+            db_query("UPDATE homepage_sections SET sort_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [$sortOrder, $secId]);
         }
         set_flash('Homepage sections order updated successfully!', 'success');
         header('Location: homepage_sections.php');
@@ -49,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sec = db_fetch_one("SELECT is_active FROM homepage_sections WHERE id = ?", [$secId]);
         if ($sec) {
             $newVal = $sec['is_active'] ? 0 : 1;
-            db_query("UPDATE homepage_sections SET is_active = ?, updated_at = datetime('now') WHERE id = ?", [$newVal, $secId]);
+            db_query("UPDATE homepage_sections SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [$newVal, $secId]);
             set_flash('Section visibility updated!', 'success');
         }
         header('Location: homepage_sections.php');
@@ -64,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $limit = max(2, min(12, (int)($_POST['items_limit'] ?? 4)));
 
         if (!empty($title)) {
-            db_query("UPDATE homepage_sections SET section_title = ?, section_subtitle = ?, badge_text = ?, items_limit = ?, updated_at = datetime('now') WHERE id = ?", [
+            db_query("UPDATE homepage_sections SET section_title = ?, section_subtitle = ?, badge_text = ?, items_limit = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [
                 $title, $subtitle, $badge, $limit, $secId
             ]);
             set_flash('Section details updated successfully!', 'success');
@@ -96,6 +98,7 @@ $sections = db_fetch_all("SELECT * FROM homepage_sections ORDER BY sort_order AS
 
 <!-- Reorder Form -->
 <form method="POST" action="homepage_sections.php">
+  <?= csrf_field() ?>
   <input type="hidden" name="action" value="reorder_all">
 
   <div style="display: grid; gap: 1.25rem; margin-bottom: 2rem;">
@@ -214,6 +217,7 @@ $sections = db_fetch_all("SELECT * FROM homepage_sections ORDER BY sort_order AS
     </div>
 
     <form method="POST" action="homepage_sections.php">
+      <?= csrf_field() ?>
       <input type="hidden" name="action" value="update_details">
       <input type="hidden" name="section_id" id="modalSecId" value="">
 

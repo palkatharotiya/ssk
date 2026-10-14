@@ -18,6 +18,7 @@ $allPermissions = get_all_admin_permissions();
 
 // Handle Form Submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_csrf();
     $action = $_POST['action'] ?? '';
 
     // 1. CREATE NEW ADMIN USER
@@ -30,18 +31,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $isActive = isset($_POST['is_active']) ? 1 : 0;
         $selectedPerms = $_POST['permissions'] ?? [];
 
+        $allowedRoles = ['admin', 'editor'];
+        if (($admin['role'] ?? '') === 'super_admin') {
+            $allowedRoles[] = 'super_admin';
+        }
+        if (!in_array($role, $allowedRoles, true)) {
+            $role = 'admin';
+        }
+
         if (empty($fullName) || empty($username) || empty($email) || empty($password)) {
             set_flash('error', 'Please fill in all required fields (Name, Username, Email, Password).');
-        } elseif (strlen($password) < 6) {
-            set_flash('error', 'Password must be at least 6 characters.');
+        } elseif (strlen($password) < 12) {
+            set_flash('error', 'Admin password must be at least 12 characters long for high security.');
         } else {
+            // Filter permissions to valid registered keys
+            $validPermKeys = array_keys($allPermissions);
+            $cleanPerms = array_values(array_intersect($selectedPerms, $validPermKeys));
+            
             // Check username or email uniqueness
             $existing = db_fetch_one("SELECT id FROM admin_users WHERE username = ? OR email = ?", [$username, $email]);
             if ($existing) {
                 set_flash('error', 'An admin account with this username or email already exists.');
             } else {
                 $hash = password_hash($password, PASSWORD_DEFAULT);
-                $permsJson = ($role === 'super_admin') ? json_encode(['*']) : json_encode(array_values($selectedPerms));
+                $permsJson = ($role === 'super_admin') ? json_encode(['*']) : json_encode($cleanPerms);
 
                 db_query("INSERT INTO admin_users (username, email, password, full_name, role, permissions, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)", [
                     $username, $email, $hash, $fullName, $role, $permsJson, $isActive
@@ -80,11 +93,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $isActive = 1;
             }
 
-            $permsJson = ($role === 'super_admin') ? json_encode(['*']) : json_encode(array_values($selectedPerms));
+            $allowedRoles = ['admin', 'editor'];
+            if (($admin['role'] ?? '') === 'super_admin') {
+                $allowedRoles[] = 'super_admin';
+            }
+            if (!in_array($role, $allowedRoles, true)) {
+                $role = $targetUser['role'];
+            }
+
+            // Filter permissions to valid registered keys
+            $validPermKeys = array_keys($allPermissions);
+            $cleanPerms = array_values(array_intersect($selectedPerms, $validPermKeys));
+            $permsJson = ($role === 'super_admin') ? json_encode(['*']) : json_encode($cleanPerms);
 
             if (!empty($password)) {
-                if (strlen($password) < 6) {
-                    set_flash('error', 'New password must be at least 6 characters.');
+                if (strlen($password) < 12) {
+                    set_flash('error', 'New password must be at least 12 characters.');
                 } else {
                     $hash = password_hash($password, PASSWORD_DEFAULT);
                     db_query("UPDATE admin_users SET full_name = ?, email = ?, role = ?, permissions = ?, is_active = ?, password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [
@@ -333,6 +357,7 @@ if ($editUserId > 0) {
 
   <div class="admin-card-body">
     <form method="POST" action="admin_users.php">
+      <?= csrf_field() ?>
       <input type="hidden" name="action" value="<?= $editUser ? 'update_admin' : 'create_admin' ?>">
       <?php if ($editUser): ?>
         <input type="hidden" name="admin_id" value="<?= $editUser['id'] ?>">
@@ -444,6 +469,7 @@ if ($editUserId > 0) {
 
 <!-- Action Form for Toggle / Delete -->
 <form id="userActionForm" method="POST" action="admin_users.php" style="display: none;">
+  <?= csrf_field() ?>
   <input type="hidden" name="action" id="userActionField">
   <input type="hidden" name="admin_id" id="userIdField">
 </form>

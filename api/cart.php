@@ -7,12 +7,27 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/security.php';
 
 $raw = file_get_contents('php://input');
 $json = json_decode($raw, true);
 $data = is_array($json) ? array_merge($_POST, $json) : $_POST;
 
 $action = $data['action'] ?? $_GET['action'] ?? 'get';
+
+// Enforce POST and origin verification on state-mutating actions
+if (in_array($action, ['add', 'update', 'remove', 'clear'], true)) {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(405);
+        echo json_encode(['success' => false, 'message' => 'Method not allowed. State mutations require POST.']);
+        exit;
+    }
+    if (!verify_request_origin()) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Request origin validation failed.']);
+        exit;
+    }
+}
 
 try {
     switch ($action) {

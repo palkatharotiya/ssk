@@ -1,0 +1,16 @@
+# SSK Store - Git Ignore Policy (Hard Rule 6)
+uploads/
+*.sqlite
+*.sqlite3
+*.db
+logs/
+*.log
+.env
+.env.*
+config.local.php
+keystore.properties
+*.jks
+*.key
+node_modules/
+.DS_Store
+Thumbs.db

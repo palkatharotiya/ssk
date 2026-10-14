@@ -4,19 +4,8 @@
  * Allows admin to edit, add, reorder, and toggle hero slideshow slides for the index page.
  */
 
-require_once __DIR__ . '/../includes/config.php';
-require_once __DIR__ . '/../includes/db.php';
-require_once __DIR__ . '/../includes/functions.php';
-
-if (!is_admin_logged_in()) {
-    header('Location: login.php');
-    exit;
-}
-$admin = current_admin();
-if (!admin_has_permission('banners', $admin)) {
-    header('Location: index.php');
-    exit;
-}
+require_once __DIR__ . '/includes/admin_bootstrap.php';
+admin_require_auth('banners');
 
 // Handle POST actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -31,18 +20,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $isActive = isset($_POST['is_active']) ? 1 : 0;
         $imagePath = trim($_POST['image_path'] ?? '');
 
-        // Handle File Upload if provided
+        // Handle File Upload if provided securely
         if (!empty($_FILES['image_file']['name']) && $_FILES['image_file']['error'] === UPLOAD_ERR_OK) {
-            $ext = strtolower(pathinfo($_FILES['image_file']['name'], PATHINFO_EXTENSION));
-            if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
-                $filename = 'slide_' . time() . '_' . rand(100, 999) . '.' . $ext;
-                $targetDir = ROOT_PATH . 'assets/images/';
-                if (!is_dir($targetDir)) {
-                    mkdir($targetDir, 0777, true);
-                }
-                $dest = $targetDir . $filename;
-                if (move_uploaded_file($_FILES['image_file']['tmp_name'], $dest)) {
-                    $imagePath = 'assets/images/' . $filename;
+            $file = $_FILES['image_file'];
+            $maxSize = 5 * 1024 * 1024; // 5MB
+            if ($file['size'] <= $maxSize) {
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime = finfo_file($finfo, $file['tmp_name']);
+                finfo_close($finfo);
+                $allowedMimes = [
+                    'image/jpeg' => 'jpg',
+                    'image/png'  => 'png',
+                    'image/webp' => 'webp',
+                ];
+                if (isset($allowedMimes[$mime])) {
+                    $ext = $allowedMimes[$mime];
+                    $filename = 'slide_' . bin2hex(random_bytes(8)) . '.' . $ext;
+                    $targetDir = ROOT_PATH . 'assets/images/';
+                    if (!is_dir($targetDir)) {
+                        mkdir($targetDir, 0755, true);
+                    }
+                    $dest = $targetDir . $filename;
+                    if (move_uploaded_file($file['tmp_name'], $dest)) {
+                        chmod($dest, 0644);
+                        $imagePath = 'assets/images/' . $filename;
+                    }
                 }
             }
         }
@@ -70,18 +72,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $isActive = isset($_POST['is_active']) ? 1 : 0;
         $imagePath = trim($_POST['image_path'] ?? '');
 
-        // Handle File Upload if provided
+        // Handle File Upload if provided securely
         if (!empty($_FILES['image_file']['name']) && $_FILES['image_file']['error'] === UPLOAD_ERR_OK) {
-            $ext = strtolower(pathinfo($_FILES['image_file']['name'], PATHINFO_EXTENSION));
-            if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
-                $filename = 'slide_' . time() . '_' . rand(100, 999) . '.' . $ext;
-                $targetDir = ROOT_PATH . 'assets/images/';
-                if (!is_dir($targetDir)) {
-                    mkdir($targetDir, 0777, true);
-                }
-                $dest = $targetDir . $filename;
-                if (move_uploaded_file($_FILES['image_file']['tmp_name'], $dest)) {
-                    $imagePath = 'assets/images/' . $filename;
+            $file = $_FILES['image_file'];
+            $maxSize = 5 * 1024 * 1024; // 5MB
+            if ($file['size'] <= $maxSize) {
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime = finfo_file($finfo, $file['tmp_name']);
+                finfo_close($finfo);
+                $allowedMimes = [
+                    'image/jpeg' => 'jpg',
+                    'image/png'  => 'png',
+                    'image/webp' => 'webp',
+                ];
+                if (isset($allowedMimes[$mime])) {
+                    $ext = $allowedMimes[$mime];
+                    $filename = 'slide_' . bin2hex(random_bytes(8)) . '.' . $ext;
+                    $targetDir = ROOT_PATH . 'assets/images/';
+                    if (!is_dir($targetDir)) {
+                        mkdir($targetDir, 0755, true);
+                    }
+                    $dest = $targetDir . $filename;
+                    if (move_uploaded_file($file['tmp_name'], $dest)) {
+                        chmod($dest, 0644);
+                        $imagePath = 'assets/images/' . $filename;
+                    }
                 }
             }
         }
@@ -199,6 +214,7 @@ require_once __DIR__ . '/includes/header.php';
 
   <div class="admin-card-body" style="padding: 0;">
     <form method="POST" action="banners.php">
+      <?= csrf_field() ?>
       <input type="hidden" name="action" value="reorder_all">
       <div style="overflow-x: auto;">
         <table class="admin-table">
@@ -338,6 +354,7 @@ require_once __DIR__ . '/includes/header.php';
 
   <div class="admin-card-body">
     <form method="POST" action="banners.php" enctype="multipart/form-data">
+      <?= csrf_field() ?>
       <input type="hidden" name="action" value="<?= $editSlide ? 'edit_slide' : 'add_slide' ?>">
       <?php if ($editSlide): ?>
         <input type="hidden" name="slide_id" value="<?= $editSlide['id'] ?>">
@@ -425,6 +442,7 @@ require_once __DIR__ . '/includes/header.php';
 
 <!-- Single action form for AJAX/JS operations -->
 <form id="actionForm" method="POST" action="banners.php" style="display: none;">
+  <?= csrf_field() ?>
   <input type="hidden" name="action" id="actionField">
   <input type="hidden" name="slide_id" id="slideIdField">
 </form>

@@ -401,17 +401,30 @@ function login_admin(string $username, string $password): array {
         return ['success' => false, 'message' => 'Invalid admin username or password.'];
     }
 
+    if (empty($admin['is_active'])) {
+        return ['success' => false, 'message' => 'This administrator account has been deactivated. Please contact the temple superadmin.'];
+    }
+
     session_regenerate_id(true);
-    $_SESSION['admin_user_id'] = $admin['id'];
+    $_SESSION['admin_user_id'] = (int)$admin['id'];
     $_SESSION['admin_name'] = $admin['full_name'];
     $_SESSION['admin_role'] = $admin['role'];
+    $_SESSION['admin_last_activity'] = time();
     db_query("UPDATE admin_users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", [$admin['id']]);
 
     return ['success' => true, 'message' => 'Login successful.'];
 }
 
 function logout_admin(): void {
-    unset($_SESSION['admin_user_id'], $_SESSION['admin_name'], $_SESSION['admin_role']);
+    unset(
+        $_SESSION['admin_user_id'],
+        $_SESSION['admin_name'],
+        $_SESSION['admin_role'],
+        $_SESSION['admin_last_activity']
+    );
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_regenerate_id(true);
+    }
 }
 
 // Wishlist

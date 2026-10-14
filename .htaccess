@@ -9,22 +9,38 @@ Options -Indexes
 # 2. DEFAULT CHARSET
 AddDefaultCharset UTF-8
 
-# 3. BLOCK ACCESS TO SENSITIVE FILES & EXTENSIONS
+# 3. BLOCK ACCESS TO SENSITIVE DIRECTORIES
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(includes|database|logs|tools|vendor|\.git)/ - [F,L,NC]
+</IfModule>
+
+# 4. BLOCK ACCESS TO SENSITIVE FILES & EXTENSIONS (Apache 2.4 with 2.2 fallback)
 <FilesMatch "(^\.|\.(env|sql|sqlite|sqlite3|db|bak|config|log|md|sh|lock|json|dist))$">
-    Order allow,deny
-    Deny from all
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
 </FilesMatch>
 
 # Specifically protect database, schema and backup files
 <FilesMatch "(database\.sql|baps_store\.sqlite|baps_store\.sqlite\.demo_backup|\.git)">
-    Order allow,deny
-    Deny from all
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
 </FilesMatch>
 
-# 4. CUSTOM ERROR DOCUMENTS
+# 5. CUSTOM ERROR DOCUMENTS
 ErrorDocument 404 /404.php
 
-# 5. SECURITY HEADERS
+# 6. SECURITY HEADERS
 <IfModule mod_headers.c>
     # Prevent MIME type sniffing
     Header always set X-Content-Type-Options "nosniff"
@@ -38,11 +54,11 @@ ErrorDocument 404 /404.php
     # XSS Protection filter for older browsers
     Header always set X-XSS-Protection "1; mode=block"
 
-    # Content Security Policy (allows inline scripts/styles for theme & Google Fonts)
+    # Content Security Policy (allows self, inline scripts/styles for theme & Google Fonts)
     Header always set Content-Security-Policy "default-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com https://fonts.gstatic.com https://wa.me https://api.whatsapp.com data: blob:;"
 </IfModule>
 
-# 6. GZIP / DEFLATE COMPRESSION
+# 7. GZIP / DEFLATE COMPRESSION
 <IfModule mod_deflate.c>
     AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript
     AddOutputFilterByType DEFLATE application/javascript application/x-javascript application/json
@@ -50,7 +66,7 @@ ErrorDocument 404 /404.php
     AddOutputFilterByType DEFLATE image/svg+xml
 </IfModule>
 
-# 7. BROWSER CACHING FOR STATIC ASSETS
+# 8. BROWSER CACHING FOR STATIC ASSETS
 <IfModule mod_expires.c>
     ExpiresActive On
     ExpiresDefault "access plus 1 month"

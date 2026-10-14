@@ -12,6 +12,16 @@ if (!ob_get_level()) {
 // Environment: set to true in live production hosting
 define('IS_PRODUCTION', getenv('APP_ENV') === 'production');
 
+if (IS_PRODUCTION) {
+    ini_set('display_errors', '0');
+    ini_set('display_startup_errors', '0');
+    error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
+} else {
+    ini_set('display_errors', '1');
+    ini_set('display_startup_errors', '1');
+    error_reporting(E_ALL);
+}
+
 // Database Configuration
 define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
 define('DB_NAME', getenv('DB_NAME') ?: 'baps_store');
