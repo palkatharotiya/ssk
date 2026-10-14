@@ -67,57 +67,59 @@ require_once __DIR__ . '/includes/header.php';
             </button>
           </div>
 
-          <table class="cart-table">
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>Price</th>
-                <th style="text-align: center;">Quantity</th>
-                <th style="text-align: right;">Total</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php foreach ($cartItems as $item): ?>
-                <?php
-                  $itemPrice = (float)$item['unit_price'];
-                  $itemTotal = $itemPrice * (int)$item['quantity'];
-                  $imgUrl = get_product_image_url($item['image'], $item['name']);
-                ?>
+          <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
+            <table class="cart-table">
+              <thead>
                 <tr>
-                  <td>
-                    <div class="cart-product-cell">
-                      <img src="<?= $imgUrl ?>" class="cart-thumb" alt="<?= htmlspecialchars($item['name']) ?>">
-                      <div>
-                        <a href="product.php?id=<?= $item['id'] ?>" style="font-weight: 700; color: var(--heading); font-size: 0.95rem; display: block; margin-bottom: 0.25rem; text-decoration: none;">
-                          <?= htmlspecialchars($item['name']) ?>
-                        </a>
-                        <span style="font-size: 0.8125rem; color: var(--text-muted);">SKU: <?= htmlspecialchars($item['sku'] ?? 'SSK-' . $item['id']) ?></span>
-                      </div>
-                    </div>
-                  </td>
-                  <td style="font-weight: 600;">
-                    <?= format_price($itemPrice) ?>
-                  </td>
-                  <td style="text-align: center;">
-                    <div class="qty-stepper">
-                      <button type="button" class="qty-btn qty-minus" aria-label="Decrease quantity">&minus;</button>
-                      <input type="number" class="qty-input" value="<?= $item['quantity'] ?>" min="1" max="99" data-cart-update="true" data-product-id="<?= $item['id'] ?>" aria-label="Item quantity">
-                      <button type="button" class="qty-btn qty-plus" aria-label="Increase quantity">&plus;</button>
-                    </div>
-                  </td>
-                  <td style="text-align: right; font-weight: 800; color: var(--red-text); font-size: 1.05rem;">
-                    <?= format_price($itemTotal) ?>
-                  </td>
-                  <td style="text-align: center;">
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="removeCartItem(<?= $item['id'] ?>)" title="Remove item" aria-label="Remove item" style="padding: 0.4rem 0.65rem; color: var(--danger); border-color: var(--input-border);">
-                      &times;
-                    </button>
-                  </td>
+                  <th>Product</th>
+                  <th>Price</th>
+                  <th style="text-align: center;">Quantity</th>
+                  <th style="text-align: right;">Total</th>
+                  <th></th>
                 </tr>
-              <?php endforeach; ?>
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                <?php foreach ($cartItems as $item): ?>
+                  <?php
+                    $itemPrice = (float)$item['unit_price'];
+                    $itemTotal = $itemPrice * (int)$item['quantity'];
+                    $imgUrl = get_product_image_url($item['image'], $item['name']);
+                  ?>
+                  <tr>
+                    <td>
+                      <div class="cart-product-cell">
+                        <img src="<?= $imgUrl ?>" class="cart-thumb" alt="<?= htmlspecialchars($item['name']) ?>">
+                        <div>
+                          <a href="product.php?id=<?= $item['id'] ?>" style="font-weight: 700; color: var(--heading); font-size: 0.95rem; display: block; margin-bottom: 0.25rem; text-decoration: none;">
+                            <?= htmlspecialchars($item['name']) ?>
+                          </a>
+                          <span style="font-size: 0.8125rem; color: var(--text-muted);">SKU: <?= htmlspecialchars($item['sku'] ?? 'SSK-' . $item['id']) ?></span>
+                        </div>
+                      </div>
+                    </td>
+                    <td style="font-weight: 600;">
+                      <?= format_price($itemPrice) ?>
+                    </td>
+                    <td style="text-align: center;">
+                      <div class="qty-stepper">
+                        <button type="button" class="qty-btn qty-minus" aria-label="Decrease quantity">&minus;</button>
+                        <input type="number" class="qty-input" value="<?= $item['quantity'] ?>" min="1" max="99" data-cart-update="true" data-product-id="<?= $item['id'] ?>" aria-label="Item quantity">
+                        <button type="button" class="qty-btn qty-plus" aria-label="Increase quantity">&plus;</button>
+                      </div>
+                    </td>
+                    <td style="text-align: right; font-weight: 800; color: var(--red-text); font-size: 1.05rem;">
+                      <?= format_price($itemTotal) ?>
+                    </td>
+                    <td style="text-align: center;">
+                      <button type="button" class="btn btn-secondary btn-sm" onclick="removeCartItem(<?= $item['id'] ?>)" title="Remove item" aria-label="Remove item" style="padding: 0.4rem 0.65rem; color: var(--danger); border-color: var(--input-border);">
+                        &times;
+                      </button>
+                    </td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
 
           <!-- Bottom Cart Continue Link -->
           <div style="display: flex; justify-content: flex-start; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1.5px solid var(--card-border);">

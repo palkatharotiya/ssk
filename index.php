@@ -238,26 +238,6 @@ require_once __DIR__ . '/includes/header.php';
     </section>
   <?php endif; ?>
 
-  <!-- Promotional Banner Section -->
-  <section class="promo-banner" style="background: linear-gradient(135deg, #18181b 0%, #27272a 100%);">
-    <div class="promo-content">
-      <span class="promo-badge">Festive Offer</span>
-      <h2 class="promo-title">Handcrafted Wooden & Oxidized Ghar Mandirs</h2>
-      <p class="promo-text">Bring divine temple architecture into your home. Beautifully carved shrines equipped with LED illumination and pull-out thali drawers from Shree Swaminarayan Mandir, Kalakunj, Surat.</p>
-      <a href="catalog.php?dept=4" class="btn btn-gold btn-lg">View Mandir Collection</a>
-    </div>
-  </section>
-
-  <!-- Satsang Blessing Banner -->
-  <section style="background: linear-gradient(135deg, #fef3c7 0%, #ffedd5 100%); border: 1px solid #fde68a; border-radius: var(--radius-lg); padding: 2.5rem; margin-bottom: 3.5rem; text-align: center;">
-    <div style="font-size: 1.75rem; margin-bottom: 0.5rem; color: #b45309;">☸</div>
-    <blockquote style="font-family: var(--font-heading); font-size: 1.35rem; font-weight: 700; color: #78350f; max-width: 820px; margin: 0 auto 0.75rem;">
-      "Perform daily satsang with pure devotion, cultivate virtues of truth, dharma, and righteous living for the supreme spiritual fulfillment."
-    </blockquote>
-    <cite style="font-style: normal; font-weight: 600; color: #92400e; font-size: 0.9375rem;">
-      — Bhagwan Shree Swaminarayan (Shikshapatri) • Shree Swaminarayan Mandir, Kalakunj, Surat
-    </cite>
-  </section>
 
 </main>
 

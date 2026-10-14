@@ -5,8 +5,8 @@
  */
 
 require_once __DIR__ . '/includes/admin_bootstrap.php';
+admin_require_auth('coupons');
 $adminPageTitle = 'Coupons & Promotions';
-require_once __DIR__ . '/includes/header.php';
 
 // Handle Add Coupon POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -46,6 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $coupons = db_fetch_all("SELECT * FROM coupons ORDER BY id DESC");
+require_once __DIR__ . '/includes/header.php';
 ?>
 
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem;">
@@ -107,45 +108,47 @@ $coupons = db_fetch_all("SELECT * FROM coupons ORDER BY id DESC");
   <div class="admin-card">
     <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 1.25rem;">Active Coupons (<?= count($coupons) ?>)</h3>
 
-    <table class="admin-table">
-      <thead>
-        <tr>
-          <th>Code</th>
-          <th>Discount</th>
-          <th>Min Order</th>
-          <th>Usage</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        <?php if (empty($coupons)): ?>
-          <tr><td colspan="5" style="text-align: center; color: var(--admin-text-muted);">No coupons created yet.</td></tr>
-        <?php else: ?>
-          <?php foreach ($coupons as $cp): ?>
-            <tr>
-              <td>
-                <strong style="color: var(--admin-primary); font-family: monospace; font-size: 1rem;"><?= htmlspecialchars($cp['code']) ?></strong>
-              </td>
-              <td>
-                <?= $cp['type'] === 'percentage' ? $cp['value'] . '%' : format_price($cp['value']) ?>
-              </td>
-              <td><?= format_price($cp['min_order_amount']) ?></td>
-              <td>
-                <?= (int)$cp['used_count'] ?><?= !empty($cp['max_uses']) ? ' / ' . $cp['max_uses'] : '' ?>
-              </td>
-              <td>
-                <form method="POST" action="coupons.php" style="display: inline;" onsubmit="return confirm('Delete coupon <?= htmlspecialchars(addslashes($cp['code'])) ?>?');">
-                  <?= csrf_field() ?>
-                  <input type="hidden" name="action" value="delete_coupon">
-                  <input type="hidden" name="coupon_id" value="<?= $cp['id'] ?>">
-                  <button type="submit" class="admin-btn admin-btn-danger admin-btn-sm">Delete</button>
-                </form>
-              </td>
-            </tr>
-          <?php endforeach; ?>
-        <?php endif; ?>
-      </tbody>
-    </table>
+    <div class="table-responsive" style="overflow-x: auto; width: 100%;">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Discount</th>
+            <th>Min Order</th>
+            <th>Usage</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php if (empty($coupons)): ?>
+            <tr><td colspan="5" style="text-align: center; color: var(--admin-text-muted);">No coupons created yet.</td></tr>
+          <?php else: ?>
+            <?php foreach ($coupons as $cp): ?>
+              <tr>
+                <td>
+                  <strong style="color: var(--admin-primary); font-family: monospace; font-size: 1rem;"><?= htmlspecialchars($cp['code']) ?></strong>
+                </td>
+                <td>
+                  <?= $cp['type'] === 'percentage' ? $cp['value'] . '%' : format_price($cp['value']) ?>
+                </td>
+                <td><?= format_price($cp['min_order_amount']) ?></td>
+                <td>
+                  <?= (int)$cp['used_count'] ?><?= !empty($cp['max_uses']) ? ' / ' . $cp['max_uses'] : '' ?>
+                </td>
+                <td>
+                  <form method="POST" action="coupons.php" style="display: inline;" onsubmit="return confirm('Delete coupon <?= htmlspecialchars(addslashes($cp['code'])) ?>?');">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="action" value="delete_coupon">
+                    <input type="hidden" name="coupon_id" value="<?= $cp['id'] ?>">
+                    <button type="submit" class="admin-btn admin-btn-danger admin-btn-sm">Delete</button>
+                  </form>
+                </td>
+              </tr>
+            <?php endforeach; ?>
+          <?php endif; ?>
+        </tbody>
+      </table>
+    </div>
   </div>
 
 </div>

@@ -5,8 +5,8 @@
  */
 
 require_once __DIR__ . '/includes/admin_bootstrap.php';
+admin_require_auth('categories');
 $adminPageTitle = 'Departments & Categories';
-require_once __DIR__ . '/includes/header.php';
 
 // Handle Add / Edit Department POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_dept'])) {
@@ -211,8 +211,8 @@ $deptIcons = [
     'agarbatti-dhoop' => '🌸',
     'clothing' => '👘',
     'calendars-diaries' => '📅',
-    'audio-video' => '🎵',
 ];
+require_once __DIR__ . '/includes/header.php';
 ?>
 
 <!-- Action Bar & Live Search -->
@@ -229,7 +229,7 @@ $deptIcons = [
     </div>
 
     <!-- Quick Action Buttons -->
-    <div style="display: flex; gap: 0.65rem;">
+    <div style="display: flex; gap: 0.65rem; flex-wrap: wrap;">
       <button type="button" onclick="toggleDeptForm()" class="admin-btn admin-btn-primary">
         + Add New Department
       </button>

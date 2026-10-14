@@ -406,7 +406,7 @@ function is_admin_logged_in(): bool {
 
 function current_admin(): ?array {
     if (!is_admin_logged_in()) return null;
-    return db_fetch_one("SELECT id, username, email, full_name, role, permissions FROM admin_users WHERE id = ? AND is_active = 1", [$_SESSION['admin_user_id']]);
+    return db_fetch_one("SELECT id, username, email, full_name, role, permissions, is_active FROM admin_users WHERE id = ? AND is_active = 1", [$_SESSION['admin_user_id']]);
 }
 
 function get_all_admin_permissions(): array {

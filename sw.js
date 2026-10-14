@@ -3,7 +3,7 @@
  * Shri Sahajanand Sahitya Kendra (Kalakunj Mandir, Surat)
  */
 
-const CACHE_VERSION = 'ssk-v1.0.0';
+const CACHE_VERSION = 'ssk-v1.0.3';
 const SHELL_CACHE = `ssk-shell-${CACHE_VERSION}`;
 const STATIC_CACHE = `ssk-static-${CACHE_VERSION}`;
 const IMAGE_CACHE = `ssk-images-${CACHE_VERSION}`;
@@ -184,10 +184,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // C. Static Stylesheets & Scripts: Stale-While-Revalidate with ignoreSearch
+  // C. Static Stylesheets & Scripts: Cache matching URL including query string for cache-busting
   if (request.destination === 'style' || request.destination === 'script' || request.destination === 'font') {
     event.respondWith(
-      caches.match(request, { ignoreSearch: true }).then((cachedResponse) => {
+      caches.match(request).then((cachedResponse) => {
         const fetchPromise = fetch(request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const responseToCache = networkResponse.clone();

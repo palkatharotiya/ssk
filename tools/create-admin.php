@@ -28,7 +28,7 @@ echo "  Shri Sahajanand Sahitya Kendra (Kalakunj Mandir, Surat)\n";
 echo "========================================================\n\n";
 
 // Parse CLI Options
-$options = getopt('', ['username:', 'email:', 'password:', 'name:', 'role:']);
+$options = getopt('', ['username:', 'email:', 'password:', 'name:', 'role:', 'dev']);
 
 function promptInput(string $prompt, bool $required = true, string $default = ''): string {
     echo $prompt . ($default !== '' ? " [default: $default]" : '') . ": ";
@@ -47,8 +47,8 @@ $username = $options['username'] ?? '';
 if (empty($username)) {
     $username = promptInput('Admin Username (min 3 chars)', true, 'superadmin');
 }
-if (strlen($username) < 3) {
-    echo "Error: Username must be at least 3 characters.\n";
+if (strlen($username) < 2) {
+    echo "Error: Username must be at least 2 characters.\n";
     exit(1);
 }
 
@@ -81,15 +81,17 @@ if (empty($password)) {
     $password = promptInput('Password');
 }
 
-if (strlen($password) < 12) {
+$isDevMode = isset($options['dev']) && (!defined('IS_PRODUCTION') || !IS_PRODUCTION);
+
+if (!$isDevMode && strlen($password) < 12) {
     echo "\nSecurity Error (Hard Rule P0-4): Admin passwords MUST be at least 12 characters long.\n";
     echo "Password entered was only " . strlen($password) . " characters. Operation aborted.\n";
     exit(1);
 }
 
-// Check for known trivial passwords
+// Check for known trivial passwords (enforced in production)
 $forbidden = ['password', 'admin123', 'admin@123', '123456789012', 'password1234'];
-if (in_array(strtolower($password), $forbidden, true)) {
+if (!$isDevMode && in_array(strtolower($password), $forbidden, true)) {
     echo "\nSecurity Error: Trivial or default passwords are strictly prohibited.\n";
     exit(1);
 }

@@ -14,3 +14,11 @@ keystore.properties
 node_modules/
 .DS_Store
 Thumbs.db
+
+# Android build & cache
+.gradle/
+**/build/
+local.properties
+.idea/
+*.iml
+

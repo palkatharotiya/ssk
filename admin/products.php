@@ -9,6 +9,34 @@ require_once __DIR__ . '/includes/admin_bootstrap.php';
 $action = $_GET['action'] ?? 'list';
 $editId = (int)($_GET['edit'] ?? 0);
 
+// API Endpoint: Media Library JSON for visual image picker
+if (isset($_GET['api']) && $_GET['api'] === 'media_library') {
+    header('Content-Type: application/json');
+    $images = [];
+    $seen = [];
+    $dirs = [
+        ROOT_PATH . 'assets/images/products/',
+        ROOT_PATH . 'uploads/products/',
+    ];
+    foreach ($dirs as $dir) {
+        if (!is_dir($dir)) continue;
+        $files = scandir($dir);
+        foreach ($files as $f) {
+            if ($f === '.' || $f === '..' || isset($seen[$f])) continue;
+            $ext = strtolower(pathinfo($f, PATHINFO_EXTENSION));
+            if (!in_array($ext, ['png', 'jpg', 'jpeg', 'webp'], true)) continue;
+            $seen[$f] = true;
+            $images[] = [
+                'filename' => $f,
+                'url' => get_product_image_url($f),
+                'name' => ucwords(str_replace(['-', '_'], ' ', pathinfo($f, PATHINFO_FILENAME)))
+            ];
+        }
+    }
+    echo json_encode($images);
+    exit;
+}
+
 // Handle Product Delete via POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_product') {
     require_csrf();
@@ -50,6 +78,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $onSale = isset($_POST['on_sale']) ? 1 : 0;
     $isActive = isset($_POST['is_active']) ? 1 : 0;
     $image = trim($_POST['image'] ?? 'vachanamrut-english.jpg');
+
+    // Handle Direct File Upload if user selected or dropped a new photo
+    if (!empty($_FILES['image_file']['name']) && $_FILES['image_file']['error'] === UPLOAD_ERR_OK) {
+        $file = $_FILES['image_file'];
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+        $allowedMimes = [
+            'image/jpeg' => 'jpg',
+            'image/png'  => 'png',
+            'image/webp' => 'webp',
+        ];
+        if (isset($allowedMimes[$mime])) {
+            $ext = $allowedMimes[$mime];
+            $cleanName = preg_replace('/[^a-zA-Z0-9_-]/', '', pathinfo($file['name'], PATHINFO_FILENAME));
+            $cleanName = substr($cleanName, 0, 30);
+            $newFilename = ($cleanName ?: 'prod') . '_' . time() . '.' . $ext;
+            $targetDir = ROOT_PATH . 'uploads/products/';
+            if (!is_dir($targetDir)) {
+                @mkdir($targetDir, 0755, true);
+            }
+            $dest = $targetDir . $newFilename;
+            if (move_uploaded_file($file['tmp_name'], $dest)) {
+                @chmod($dest, 0644);
+                $image = $newFilename;
+            }
+        }
+    }
 
     if (empty($sku)) {
         $sku = generate_unique_sku($name, $editId);
@@ -157,7 +213,7 @@ $totalStoreProducts = (int)(db_fetch_one("SELECT COUNT(*) as c FROM products")['
     <a href="products.php" class="admin-btn admin-btn-secondary admin-btn-sm">&larr; Back to Products</a>
   </div>
 
-  <form method="POST" id="productEditForm" style="max-width: 900px; margin: 0 auto 3rem;">
+  <form method="POST" id="productEditForm" enctype="multipart/form-data" style="max-width: 900px; margin: 0 auto 3rem;">
     <?= csrf_field() ?>
 
     <!-- Card 1: Basic Information -->
@@ -278,7 +334,7 @@ $totalStoreProducts = (int)(db_fetch_one("SELECT COUNT(*) as c FROM products")['
       </div>
     </div>
 
-    <!-- Card 4: Images -->
+    <!-- Card 4: Images & Visuals -->
     <div class="admin-card">
       <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--card-border);">
         <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(1, 23, 96, 0.08); color: var(--heading); display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 700;">
@@ -286,21 +342,85 @@ $totalStoreProducts = (int)(db_fetch_one("SELECT COUNT(*) as c FROM products")['
         </div>
         <div>
           <h3 style="font-size: 1.15rem; font-weight: 700; margin: 0; color: var(--heading);">Images & Visuals</h3>
-          <p style="font-size: 0.8125rem; color: var(--admin-text-muted); margin: 0;">Product photograph filename and preview</p>
+          <p style="font-size: 0.8125rem; color: var(--admin-text-muted); margin: 0;">Upload a product photo from your device, or choose from your existing photo library</p>
         </div>
       </div>
 
-      <div style="display: grid; grid-template-columns: 1fr 140px; gap: 1.5rem; align-items: start;">
-        <div class="admin-form-group">
-          <label class="admin-label" for="p-image">Product Image File Name</label>
-          <input type="text" id="p-image" name="image" class="admin-input" placeholder="e.g. vachanamrut-gujarati.jpg or tulsi-kanthi.jpg" value="<?= htmlspecialchars($editProduct['image'] ?? 'vachanamrut-english.jpg') ?>" oninput="updateImagePreview(this.value)">
-          <div style="color: var(--admin-text-muted); font-size: 0.75rem; margin-top: 6px;">Image stored in <code>assets/images/products/</code> or <code>uploads/</code>.</div>
+      <div style="display: grid; grid-template-columns: 1fr 180px; gap: 1.5rem; align-items: start;">
+        <div>
+          <!-- Drag & Drop Zone -->
+          <div class="admin-dropzone" id="imageDropzone" onclick="document.getElementById('p-image-file').click()" title="Click to browse file">
+            <input type="file" id="p-image-file" name="image_file" accept="image/png,image/jpeg,image/jpg,image/webp" style="display: none;" onchange="handleFileSelect(this)">
+            
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none;">
+              <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(1, 23, 96, 0.08); display: flex; align-items: center; justify-content: center; margin-bottom: 0.75rem; color: var(--heading);">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+              </div>
+              <div style="font-weight: 700; font-size: 0.9375rem; color: var(--heading); margin-bottom: 0.25rem;">
+                Click to browse photo, or drag and drop here
+              </div>
+              <div style="font-size: 0.8125rem; color: var(--admin-text-muted);">
+                Supports PNG, JPG, JPEG, WEBP (High-res product photos)
+              </div>
+            </div>
+          </div>
+
+          <!-- File upload / Library selection status message -->
+          <div id="imageStatusBanner" style="display: none; margin-top: 0.75rem; padding: 0.65rem 0.9rem; border-radius: 8px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.8125rem; color: #065f46; align-items: center; justify-content: space-between; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span id="imageStatusIcon" style="font-size: 1.1rem;">📷</span>
+              <span id="imageStatusText">New image chosen</span>
+            </div>
+            <button type="button" onclick="clearSelectedImage()" style="background: none; border: none; color: #b91c1c; font-size: 0.8125rem; font-weight: 600; cursor: pointer; text-decoration: underline;">
+              Remove / Reset
+            </button>
+          </div>
+
+          <!-- Photo Library Picker Action Button -->
+          <div style="margin-top: 0.85rem; display: flex; align-items: center; gap: 10px;">
+            <div style="flex: 1; height: 1px; background: var(--card-border);"></div>
+            <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--admin-text-muted); font-weight: 600;">OR</span>
+            <div style="flex: 1; height: 1px; background: var(--card-border);"></div>
+          </div>
+
+          <button type="button" class="admin-btn admin-btn-secondary" onclick="openMediaLibraryModal()" style="width: 100%; margin-top: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+              <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+            Choose from Existing Photo Library (500+ Items)
+          </button>
+
+          <!-- Collapsible Advanced Filename Input (for Power Users) -->
+          <details style="margin-top: 1rem; font-size: 0.8125rem;">
+            <summary style="color: var(--admin-text-muted); cursor: pointer; user-select: none;">
+              ⚙️ Advanced: View or manually edit image filename
+            </summary>
+            <div style="margin-top: 0.6rem; padding: 0.75rem; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--card-border);">
+              <label class="admin-label" for="p-image" style="font-size: 0.75rem; margin-bottom: 4px;">Image Filename in Database</label>
+              <input type="text" id="p-image" name="image" class="admin-input" placeholder="e.g. vachanamrut-gujarati.jpg" value="<?= htmlspecialchars($editProduct['image'] ?? 'vachanamrut-english.jpg') ?>" oninput="updateImagePreview(this.value)">
+              <div style="color: var(--admin-text-muted); font-size: 0.7188rem; margin-top: 4px;">
+                Stored in <code>assets/images/products/</code> or <code>uploads/products/</code>
+              </div>
+            </div>
+          </details>
         </div>
 
+        <!-- Live Preview Card -->
         <div style="text-align: center;">
-          <div style="font-size: 0.75rem; font-weight: 600; color: var(--admin-text-muted); margin-bottom: 6px;">Live Preview</div>
-          <div style="width: 120px; height: 120px; border-radius: 12px; border: 1.5px solid var(--input-border); overflow: hidden; background: var(--surface-2); display: flex; align-items: center; justify-content: center; margin: 0 auto; box-shadow: var(--shadow-sm);">
-            <img id="imgPreview" src="<?= get_product_image_url($editProduct['image'] ?? 'vachanamrut-english.jpg', $editProduct['name'] ?? '') ?>" alt="Preview" style="width: 100%; height: 100%; object-fit: cover;">
+          <div style="font-size: 0.75rem; font-weight: 700; color: var(--admin-text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">
+            Live Preview
+          </div>
+          <div style="width: 160px; height: 160px; border-radius: 14px; border: 2px solid var(--input-border); overflow: hidden; background: #ffffff; display: flex; align-items: center; justify-content: center; margin: 0 auto; box-shadow: var(--shadow-sm); position: relative;">
+            <img id="imgPreview" src="<?= get_product_image_url($editProduct['image'] ?? 'vachanamrut-english.jpg', $editProduct['name'] ?? '') ?>" alt="Product Preview" style="width: 100%; height: 100%; object-fit: contain; padding: 6px;">
+          </div>
+          <div id="previewFilenameBadge" style="margin-top: 8px; font-size: 0.75rem; color: var(--admin-text-muted); word-break: break-all; max-width: 160px; margin-left: auto; margin-right: auto;">
+            <?= htmlspecialchars($editProduct['image'] ?? 'vachanamrut-english.jpg') ?>
           </div>
         </div>
       </div>
@@ -349,6 +469,43 @@ $totalStoreProducts = (int)(db_fetch_one("SELECT COUNT(*) as c FROM products")['
 
   </form>
 
+  <!-- Visual Photo Library Picker Modal -->
+  <div class="media-modal-backdrop" id="mediaModal" onclick="handleModalBackdropClick(event)">
+    <div class="media-modal-box">
+      <div class="media-modal-header">
+        <div>
+          <h3 style="font-size: 1.15rem; font-weight: 700; margin: 0; color: var(--heading);">SSK Product Photo Library</h3>
+          <p style="font-size: 0.8125rem; color: var(--admin-text-muted); margin: 0.15rem 0 0;">
+            Select any authentic photograph from the catalog library below.
+          </p>
+        </div>
+        <button type="button" onclick="closeMediaLibraryModal()" class="admin-btn admin-btn-secondary admin-btn-sm" style="font-size: 1.25rem; line-height: 1; padding: 4px 10px;">&times;</button>
+      </div>
+
+      <!-- Search in Media Library -->
+      <div style="padding: 0.85rem 1.5rem; border-bottom: 1px solid var(--admin-border); background: var(--surface-2); display: flex; gap: 10px; align-items: center;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--admin-text-muted); flex-shrink: 0;">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="mediaSearchInput" class="admin-input" placeholder="Type to filter photos (e.g. vachanamrut, mala, kanthi, mandir, shikshapatri)..." oninput="filterMediaLibrary(this.value)" style="margin: 0;">
+        <span id="mediaItemCount" style="font-size: 0.8125rem; color: var(--admin-text-muted); white-space: nowrap;">Loading...</span>
+      </div>
+
+      <div class="media-modal-body">
+        <div id="mediaGrid" class="media-grid">
+          <div style="grid-column: 1 / -1; text-align: center; padding: 3rem 1rem; color: var(--admin-text-muted);">
+            Loading photo library...
+          </div>
+        </div>
+      </div>
+
+      <div style="padding: 0.75rem 1.5rem; border-top: 1px solid var(--admin-border); background: var(--surface-2); display: flex; justify-content: flex-end; gap: 8px;">
+        <button type="button" class="admin-btn admin-btn-secondary" onclick="closeMediaLibraryModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <script>
   let formIsDirty = false;
   const form = document.getElementById('productEditForm');
@@ -380,16 +537,224 @@ $totalStoreProducts = (int)(db_fetch_one("SELECT COUNT(*) as c FROM products")['
     }
   });
 
+  // --- Enhanced Image Upload & Media Library Logic ---
+  const defaultInitialImage = "<?= htmlspecialchars($editProduct['image'] ?? 'vachanamrut-english.jpg') ?>";
+  const defaultInitialUrl = "<?= get_product_image_url($editProduct['image'] ?? 'vachanamrut-english.jpg', $editProduct['name'] ?? '') ?>";
+  let mediaLibraryCache = null;
+
   function updateImagePreview(fileName) {
     const preview = document.getElementById('imgPreview');
+    const badge = document.getElementById('previewFilenameBadge');
     if (!preview) return;
-    fileName = fileName.trim();
+    fileName = (fileName || '').trim();
     if (!fileName) return;
-    if (fileName.startsWith('http://') || fileName.startsWith('https://')) {
+
+    if (badge) badge.innerText = fileName;
+
+    if (fileName.startsWith('http://') || fileName.startsWith('https://') || fileName.startsWith('data:')) {
       preview.src = fileName;
     } else {
       preview.src = '../assets/images/products/' + fileName;
+      preview.onerror = function() {
+        this.src = '../uploads/products/' + fileName;
+        this.onerror = function() {
+          this.src = '../assets/images/placeholder.php?title=' + encodeURIComponent(fileName);
+        };
+      };
     }
+  }
+
+  function handleFileSelect(input) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Selected file is too large. Please select an image under 10MB.');
+      input.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const preview = document.getElementById('imgPreview');
+      if (preview) preview.src = e.target.result;
+
+      const banner = document.getElementById('imageStatusBanner');
+      const text = document.getElementById('imageStatusText');
+      const badge = document.getElementById('previewFilenameBadge');
+
+      const sizeStr = file.size > 1024 * 1024
+        ? (file.size / (1024 * 1024)).toFixed(1) + ' MB'
+        : Math.round(file.size / 1024) + ' KB';
+
+      if (text) text.innerHTML = '<strong>' + escapeHtml(file.name) + '</strong> (' + sizeStr + ') ready to upload';
+      if (banner) banner.style.display = 'flex';
+      if (badge) badge.innerText = file.name;
+
+      formIsDirty = true;
+      if (unsavedBadge) unsavedBadge.classList.add('active');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearSelectedImage() {
+    const fileInput = document.getElementById('p-image-file');
+    if (fileInput) fileInput.value = '';
+
+    const banner = document.getElementById('imageStatusBanner');
+    if (banner) banner.style.display = 'none';
+
+    const pImage = document.getElementById('p-image');
+    if (pImage) pImage.value = defaultInitialImage;
+
+    const preview = document.getElementById('imgPreview');
+    if (preview) preview.src = defaultInitialUrl;
+
+    const badge = document.getElementById('previewFilenameBadge');
+    if (badge) badge.innerText = defaultInitialImage;
+  }
+
+  // Setup Drag and Drop listeners
+  const dropzone = document.getElementById('imageDropzone');
+  if (dropzone) {
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.add('dragover');
+      }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.remove('dragover');
+      }, false);
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      if (dt && dt.files && dt.files.length) {
+        const fileInput = document.getElementById('p-image-file');
+        fileInput.files = dt.files;
+        handleFileSelect(fileInput);
+      }
+    }, false);
+  }
+
+  function openMediaLibraryModal() {
+    const modal = document.getElementById('mediaModal');
+    if (!modal) return;
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+
+    if (!mediaLibraryCache) {
+      loadMediaLibrary();
+    } else {
+      renderMediaGrid(mediaLibraryCache);
+    }
+  }
+
+  function closeMediaLibraryModal() {
+    const modal = document.getElementById('mediaModal');
+    if (!modal) return;
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+
+  function handleModalBackdropClick(e) {
+    if (e.target && e.target.id === 'mediaModal') {
+      closeMediaLibraryModal();
+    }
+  }
+
+  async function loadMediaLibrary() {
+    const grid = document.getElementById('mediaGrid');
+    const countEl = document.getElementById('mediaItemCount');
+    try {
+      const res = await fetch('products.php?api=media_library');
+      if (!res.ok) throw new Error('Failed to load media library');
+      const data = await res.json();
+      mediaLibraryCache = data;
+      renderMediaGrid(data);
+    } catch (err) {
+      console.error(err);
+      if (grid) grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #b91c1c; padding: 2rem;">Failed to load photos. Please try again.</div>';
+    }
+  }
+
+  function renderMediaGrid(items) {
+    const grid = document.getElementById('mediaGrid');
+    const countEl = document.getElementById('mediaItemCount');
+    if (!grid) return;
+
+    if (countEl) countEl.innerText = items.length + ' photos';
+
+    if (!items || items.length === 0) {
+      grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--admin-text-muted); padding: 3rem 1rem;">No matching photographs found.</div>';
+      return;
+    }
+
+    const currentVal = (document.getElementById('p-image')?.value || '').toLowerCase();
+
+    let html = '';
+    items.forEach(item => {
+      const isSelected = (item.filename.toLowerCase() === currentVal);
+      html += `
+        <div class="media-thumb-card ${isSelected ? 'selected' : ''}" onclick="selectLibraryImage('${escapeHtml(item.filename)}', '${escapeHtml(item.url)}')">
+          <img src="${escapeHtml(item.url)}" alt="${escapeHtml(item.name)}" class="media-thumb-img" loading="lazy">
+          <div class="media-thumb-title" title="${escapeHtml(item.filename)}">${escapeHtml(item.filename)}</div>
+        </div>
+      `;
+    });
+    grid.innerHTML = html;
+  }
+
+  function filterMediaLibrary(query) {
+    if (!mediaLibraryCache) return;
+    query = (query || '').toLowerCase().trim();
+    if (!query) {
+      renderMediaGrid(mediaLibraryCache);
+      return;
+    }
+    const filtered = mediaLibraryCache.filter(item => {
+      return item.filename.toLowerCase().includes(query) || item.name.toLowerCase().includes(query);
+    });
+    renderMediaGrid(filtered);
+  }
+
+  function selectLibraryImage(filename, url) {
+    const fileInput = document.getElementById('p-image-file');
+    if (fileInput) fileInput.value = '';
+
+    const pImage = document.getElementById('p-image');
+    if (pImage) pImage.value = filename;
+
+    const preview = document.getElementById('imgPreview');
+    if (preview) preview.src = url;
+
+    const badge = document.getElementById('previewFilenameBadge');
+    if (badge) badge.innerText = filename;
+
+    const banner = document.getElementById('imageStatusBanner');
+    const text = document.getElementById('imageStatusText');
+    if (text) text.innerHTML = 'Selected from library: <strong>' + escapeHtml(filename) + '</strong>';
+    if (banner) banner.style.display = 'flex';
+
+    formIsDirty = true;
+    if (unsavedBadge) unsavedBadge.classList.add('active');
+
+    closeMediaLibraryModal();
+  }
+
+  function escapeHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   function filterProductTaxonomy() {
@@ -564,7 +929,7 @@ $totalStoreProducts = (int)(db_fetch_one("SELECT COUNT(*) as c FROM products")['
         </div>
       </div>
     <?php else: ?>
-      <div style="overflow-x: auto;">
+      <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
         <table class="admin-table" id="productsTable">
           <thead>
             <tr>

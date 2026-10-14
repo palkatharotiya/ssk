@@ -132,28 +132,30 @@ if ($viewId > 0) {
     </div>
 
     <!-- Order Items Table -->
-    <table class="admin-table">
-      <thead>
-        <tr>
-          <th>Item Name</th>
-          <th>SKU</th>
-          <th>Qty</th>
-          <th>Unit Price</th>
-          <th>Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        <?php foreach ($viewItems as $vi): ?>
+    <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
+      <table class="admin-table">
+        <thead>
           <tr>
-            <td><strong><?= htmlspecialchars($vi['product_name']) ?></strong></td>
-            <td><?= htmlspecialchars($vi['product_sku'] ?? 'N/A') ?></td>
-            <td><?= $vi['quantity'] ?></td>
-            <td><?= format_price($vi['price']) ?></td>
-            <td style="font-weight: 700; color: var(--admin-primary);"><?= format_price($vi['total']) ?></td>
+            <th>Item Name</th>
+            <th>SKU</th>
+            <th>Qty</th>
+            <th>Unit Price</th>
+            <th>Total</th>
           </tr>
-        <?php endforeach; ?>
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          <?php foreach ($viewItems as $vi): ?>
+            <tr>
+              <td><strong><?= htmlspecialchars($vi['product_name']) ?></strong></td>
+              <td><?= htmlspecialchars($vi['product_sku'] ?? 'N/A') ?></td>
+              <td><?= $vi['quantity'] ?></td>
+              <td><?= format_price($vi['price']) ?></td>
+              <td style="font-weight: 700; color: var(--admin-primary);"><?= format_price($vi['total']) ?></td>
+            </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
   </div>
 
 <?php else: ?>
@@ -168,7 +170,7 @@ if ($viewId > 0) {
       <a href="orders.php?status=delivered" class="admin-btn <?= $statusFilter === 'delivered' ? 'admin-btn-primary' : 'admin-btn-secondary' ?> admin-btn-sm">Delivered</a>
     </div>
 
-    <div style="overflow-x: auto;">
+    <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
       <table class="admin-table">
         <thead>
           <tr>

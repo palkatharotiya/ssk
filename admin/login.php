@@ -131,7 +131,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
       </div>
     <?php endif; ?>
 
-    <form method="POST" action="login.php" id="adminLoginForm">
+    <form method="POST" action="/admin/login.php" id="adminLoginForm">
       <?= csrf_field() ?>
 
       <div class="admin-form-group">

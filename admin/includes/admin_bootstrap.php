@@ -13,7 +13,14 @@ require_once __DIR__ . '/../../includes/db.php';
 require_once __DIR__ . '/../../includes/functions.php';
 require_once __DIR__ . '/../../includes/security.php';
 
-$currentPage = basename($_SERVER['PHP_SELF'] ?? '');
+$currentPage = basename($_SERVER['SCRIPT_FILENAME'] ?? $_SERVER['PHP_SELF'] ?? '');
+if (empty($currentPage) || $currentPage === 'router.php') {
+    $parsedUri = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '';
+    $currentPage = basename($parsedUri);
+    if (empty($currentPage) || $currentPage === 'admin') {
+        $currentPage = 'index.php';
+    }
+}
 
 // Whitelist pages that bypass login checks
 $publicAdminPages = ['login.php'];
@@ -86,5 +93,21 @@ if (!in_array($currentPage, $publicAdminPages, true)) {
     // 5. Automatic CSRF Protection for state-changing POST requests in admin
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && $currentPage !== 'logout.php') {
         require_csrf();
+    }
+}
+
+/**
+ * Enforce authentication and specific module permission for admin pages.
+ */
+function admin_require_auth(string $permission = 'dashboard'): void {
+    if (!is_admin_logged_in()) {
+        header('Location: login.php');
+        exit;
+    }
+    $admin = current_admin();
+    if (!$admin || !admin_has_permission($permission, $admin)) {
+        set_flash('error', 'Access Denied: You do not have permission to view that section.');
+        header('Location: index.php');
+        exit;
     }
 }

@@ -1,8 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">SSK Store</string>
-    <string name="website_url">https://sskstore.in/</string>
-    <string name="dev_url">http://10.0.2.2:8000/</string>
-    <string name="offline_title">No Internet Connection</string>
-    <string name="offline_desc">Please check your network connection and try again.</string>
-    <string name="retry_btn">Retry Connection</string>
+    <string name="store_full_name">Shri Sahajanand Sahitya Kendra</string>
+    <string name="store_tagline">Kalakunj Mandir, Surat</string>
 </resources>

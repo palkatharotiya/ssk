@@ -232,7 +232,7 @@ $lowStockProducts = db_fetch_all("SELECT id, name, sku, stock_qty, price
         </p>
       </div>
     <?php else: ?>
-      <div style="overflow-x: auto;">
+      <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
         <table class="admin-table">
           <thead>
             <tr>

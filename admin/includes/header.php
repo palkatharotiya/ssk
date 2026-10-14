@@ -3,10 +3,15 @@
  * SSK Store - Admin Header & Layout with Role-Based Access Control (RBAC)
  */
 
+// Start output buffering to prevent headers already sent errors
+if (!ob_get_level()) {
+    ob_start();
+}
+
 require_once __DIR__ . '/admin_bootstrap.php';
 
 $admin = $currentAdmin ?? current_admin();
-$currentPage = basename($_SERVER['PHP_SELF'] ?? '');
+$currentPage = $currentPage ?? basename($_SERVER['PHP_SELF'] ?? '');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -185,8 +190,5 @@ $currentPage = basename($_SERVER['PHP_SELF'] ?? '');
 
     <!-- Content Area -->
     <div class="admin-content">
-      <?php if ($flash = get_flash()): ?>
-        <div style="padding: 1rem 1.25rem; border-radius: 6px; margin-bottom: 1.5rem; background: <?= in_array($flash['type'], ['success'], true) ? '#dcfce7' : '#fee2e2' ?>; color: <?= in_array($flash['type'], ['success'], true) ? '#166534' : '#991b1b' ?>; font-weight: 600; border: 1px solid <?= in_array($flash['type'], ['success'], true) ? '#bbf7d0' : '#fecaca' ?>;">
-          <?= htmlspecialchars($flash['message']) ?>
-        </div>
-      <?php endif; ?>
+      <!-- Reusable Pop-up Modals & Toasts System -->
+      <?php require_once __DIR__ . '/../../includes/notifications.php'; ?>

@@ -752,7 +752,7 @@ require_once __DIR__ . '/includes/header.php';
     </span>
   </div>
 
-  <div style="overflow-x: auto; margin-bottom: 2rem;">
+  <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch; margin-bottom: 2rem;">
     <table class="admin-table">
       <thead>
         <tr>

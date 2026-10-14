@@ -396,19 +396,39 @@ function updateCartItemOnServer(productId, qty) {
     });
 }
 
-// Mobile Nav
+// Mobile Off-Canvas Drawer Navigation
+function openMobileDrawer() {
+    document.body.classList.add('mobile-drawer-open');
+}
+
+function closeMobileDrawer() {
+    document.body.classList.remove('mobile-drawer-open');
+}
+
 function initMobileNav() {
-    const toggle = document.querySelector('.mobile-toggle');
-    const navBar = document.querySelector('.nav-bar');
-    if (toggle && navBar) {
-        toggle.addEventListener('click', () => {
-            if (navBar.style.display === 'block') {
-                navBar.style.display = 'none';
-            } else {
-                navBar.style.display = 'block';
-            }
+    const toggle = document.getElementById('mobileToggleBtn') || document.querySelector('.mobile-toggle');
+    const backdrop = document.getElementById('mobileDrawerBackdrop');
+    const closeBtn = document.getElementById('mobileDrawerClose');
+
+    if (toggle) {
+        toggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            openMobileDrawer();
         });
     }
+    if (backdrop) {
+        backdrop.addEventListener('click', () => closeMobileDrawer());
+    }
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => closeMobileDrawer());
+    }
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && document.body.classList.contains('mobile-drawer-open')) {
+            closeMobileDrawer();
+        }
+    });
 }
 
 // Back to Top Button

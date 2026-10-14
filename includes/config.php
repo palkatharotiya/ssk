@@ -9,18 +9,14 @@ if (!ob_get_level()) {
     ob_start();
 }
 
-// Environment: set to true in live production hosting
+// Environment & Error Handling: Suppress raw PHP warning stack traces from user rendering
 define('IS_PRODUCTION', getenv('APP_ENV') === 'production');
 
-if (IS_PRODUCTION) {
-    ini_set('display_errors', '0');
-    ini_set('display_startup_errors', '0');
-    error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
-} else {
-    ini_set('display_errors', '1');
-    ini_set('display_startup_errors', '1');
-    error_reporting(E_ALL);
-}
+ini_set('display_errors', '0');
+ini_set('display_startup_errors', '0');
+ini_set('log_errors', '1');
+ini_set('error_log', __DIR__ . '/../logs/php_errors.log');
+error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
 
 // Database Configuration
 define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
@@ -32,10 +28,17 @@ define('DB_CHARSET', 'utf8mb4');
 // Dynamic Site URL detection
 $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
 $proto = $isHttps ? 'https://' : 'http://';
-$httpHost = $_SERVER['HTTP_HOST'] ?? 'localhost:8000';
-$scriptPath = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
-$subDir = preg_replace('#/(admin|api|pages).*$#', '', $scriptPath);
-$subDir = rtrim($subDir, '/');
+if (php_sapi_name() === 'cli') {
+    $subDir = '';
+} else {
+    $scriptPath = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
+    if (preg_match('/^[a-zA-Z]:/', $scriptPath)) {
+        $subDir = '';
+    } else {
+        $subDir = preg_replace('#/(admin|api|pages).*$#', '', $scriptPath);
+        $subDir = rtrim($subDir, '/');
+    }
+}
 
 define('SITE_URL', $proto . $httpHost . $subDir);
 define('SITE_NAME', 'SSK.STORE');

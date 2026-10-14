@@ -5,8 +5,8 @@
  */
 
 require_once __DIR__ . '/includes/admin_bootstrap.php';
+admin_require_auth('homepage_sections');
 $adminPageTitle = 'Homepage Sections Layout';
-require_once __DIR__ . '/includes/header.php';
 
 // Handle POST actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -78,6 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Fetch all sections ordered by sort_order
 $sections = db_fetch_all("SELECT * FROM homepage_sections ORDER BY sort_order ASC, id ASC");
+require_once __DIR__ . '/includes/header.php';
 ?>
 
 <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">

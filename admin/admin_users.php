@@ -4,8 +4,8 @@
  * Allows superadmin to create staff accounts and assign page-by-page access permissions.
  */
 
-$adminPageTitle = 'Admin Roles & Access Management';
-require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/includes/admin_bootstrap.php';
+$admin = current_admin();
 
 // Superadmin or explicit admin_users permission check
 if (!admin_has_permission('admin_users', $admin)) {
@@ -179,6 +179,8 @@ if ($editUserId > 0) {
         $editUserPerms = is_array($decoded) ? $decoded : [];
     }
 }
+$adminPageTitle = 'Admin Roles & Access Management';
+require_once __DIR__ . '/includes/header.php';
 ?>
 
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
@@ -212,7 +214,7 @@ if ($editUserId > 0) {
   </div>
 
   <div class="admin-card-body" style="padding: 0;">
-    <div style="overflow-x: auto;">
+    <div class="table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
       <table class="admin-table">
         <thead>
           <tr>

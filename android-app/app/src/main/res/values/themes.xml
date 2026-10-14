@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.SSKStore" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#0A2472</item>
+        <item name="android:navigationBarColor">#0A2472</item>
+    </style>
+</resources>
