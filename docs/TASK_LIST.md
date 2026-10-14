@@ -73,7 +73,7 @@
 ---
 
 ## Phase 6: Self-Verification & Final Report
-- [ ] **Task 6.1:** Run static linting and security test suite (`tests/security/`).
-- [ ] **Task 6.2:** Verify database operations on both MySQL and SQLite.
-- [ ] **Task 6.3:** Re-measure performance under mobile 4G simulation and verify Lighthouse ≥ 90.
-- [ ] **Task 6.4:** Deliver `docs/TEST_REPORT.md`, `docs/PERFORMANCE_REPORT.md`, and `docs/DEPLOYMENT.md`.
+- [x] **Task 6.1:** Run static linting and security test suite (`tests/security/`).
+- [x] **Task 6.2:** Verify database operations on both MySQL and SQLite.
+- [x] **Task 6.3:** Re-measure performance under mobile 4G simulation and verify Lighthouse ≥ 90.
+- [x] **Task 6.4:** Deliver `docs/TEST_REPORT.md`, `docs/PERFORMANCE_REPORT.md`, and `docs/DEPLOYMENT.md`.
