@@ -54,21 +54,21 @@
 ---
 
 ## Phase 4: Speed Optimization (Photos First)
-- [ ] **Task 4.1:** Build image pipeline `includes/images.php` (WebP/AVIF generation, responsive variants).
-- [ ] **Task 4.2:** Create `<picture>` helper `render_picture()` with responsive `srcset` and lazy loading.
-- [ ] **Task 4.3:** Compress existing static assets (optimize 1.14 MB logo down to < 40 KB, banners down to < 120 KB).
-- [ ] **Task 4.4:** Create CLI image conversion script `tools/optimize-images.php`.
-- [ ] **Task 4.5:** Remove render-blocking Google Font chains; preload self-hosted WOFF2 fonts.
-- [ ] **Task 4.6:** Minify CSS/JS and append cache-busting timestamps (`?v=filemtime`).
+- [x] **Task 4.1:** Build image pipeline `includes/images.php` (WebP/AVIF generation, responsive variants).
+- [x] **Task 4.2:** Create `<picture>` helper `render_picture()` with responsive `srcset` and lazy loading.
+- [x] **Task 4.3:** Compress existing static assets (optimize 1.14 MB logo down to < 40 KB, banners down to < 120 KB).
+- [x] **Task 4.4:** Create CLI image conversion script `tools/optimize-images.php`.
+- [x] **Task 4.5:** Remove render-blocking Google Font chains; preload self-hosted WOFF2 fonts.
+- [x] **Task 4.6:** Minify CSS/JS and append cache-busting timestamps (`?v=filemtime`).
 
 ---
 
 ## Phase 5: SEO, PWA, Android App & Branding Polish
-- [ ] **Task 5.1:** Clean SEO URL routing with 301 redirects; fix canonical tags in `header.php`.
-- [ ] **Task 5.2:** Generate dynamic `sitemap.xml` from active database items.
-- [ ] **Task 5.3:** Harden service worker `sw.js` (non-atomic precache, offline page caching, safe update flow).
-- [ ] **Task 5.4:** Harden Android WebView app (parameterize URLs, secure origins, disable cleartext).
-- [ ] **Task 5.5:** Remove all remaining "BAPS" naming artifacts across code, comments, and seeds.
+- [x] **Task 5.1:** Clean SEO URL routing with 301 redirects; fix canonical tags in `header.php`.
+- [x] **Task 5.2:** Generate dynamic `sitemap.xml` from active database items.
+- [x] **Task 5.3:** Harden service worker `sw.js` (non-atomic precache, offline page caching, safe update flow).
+- [x] **Task 5.4:** Harden Android WebView app (parameterize URLs, secure origins, disable cleartext).
+- [x] **Task 5.5:** Remove all remaining "BAPS" naming artifacts across code, comments, and seeds.
 
 ---
 

@@ -118,18 +118,18 @@ require_once __DIR__ . '/includes/header.php';
 
 <main class="container">
 
-  <!-- Free Shipping Strip (matching baps.store) -->
-  <section class="baps-shipping-strip">
-    <div class="baps-shipping-badge">
-      <div class="baps-truck-icon">
+  <!-- Free Shipping Strip -->
+  <section class="ssk-shipping-strip">
+    <div class="ssk-shipping-badge">
+      <div class="ssk-truck-icon">
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
       </div>
       <div>
-        <span class="baps-free-title">FREE*</span>
-        <span class="baps-ship-title">SHIPPING</span>
+        <span class="ssk-free-title">FREE*</span>
+        <span class="ssk-ship-title">SHIPPING</span>
       </div>
     </div>
-    <div class="baps-shipping-details">
+    <div class="ssk-shipping-details">
       <div>* <strong>Within Gujarat</strong> : For Order of ₹500 &amp; Above</div>
       <div>* <strong>Metro City</strong> : For Order of ₹750 &amp; Above</div>
       <div>* <strong>Within India</strong> : For Order of ₹750 &amp; Above</div>
@@ -139,20 +139,20 @@ require_once __DIR__ . '/includes/header.php';
     </div>
   </section>
 
-  <!-- Dynamic Admin-Ordered Product Showcase Sections (Pure Product View matching baps.store) -->
+  <!-- Dynamic Admin-Ordered Product Showcase Sections -->
   <?php foreach ($sections as $sec): ?>
     <?php
       $limit = max((int)($sec['items_limit'] ?? 5), 5);
       $secProducts = get_section_products($sec['section_key'], $limit);
       if (empty($secProducts)) continue;
     ?>
-    <section class="baps-section-container">
-      <div class="baps-section-header">
+    <section class="ssk-section-container">
+      <div class="ssk-section-header">
         <h2><?= htmlspecialchars($sec['section_title']) ?></h2>
-        <a href="catalog.php" class="baps-view-all">View all</a>
+        <a href="catalog.php" class="ssk-view-all">View all</a>
       </div>
 
-      <div class="baps-products-grid">
+      <div class="ssk-products-grid">
         <?php foreach ($secProducts as $product): ?>
           <?php
             $price = (float)$product['price'];
@@ -162,20 +162,20 @@ require_once __DIR__ . '/includes/header.php';
             $discountPct = $hasDiscount ? round((($price - $salePrice) / $price) * 100) : 0;
             $imgUrl = get_product_image_url($product['image'], $product['name']);
           ?>
-          <a href="product.php?id=<?= $product['id'] ?>" class="baps-product-card" title="<?= htmlspecialchars($product['name']) ?>">
-            <div class="baps-product-thumb">
+          <a href="product.php?id=<?= $product['id'] ?>" class="ssk-product-card" title="<?= htmlspecialchars($product['name']) ?>">
+            <div class="ssk-product-thumb">
               <?php if ($hasDiscount): ?>
-                <span class="baps-product-badge sale"><?= $discountPct ?>% OFF</span>
+                <span class="ssk-product-badge sale"><?= $discountPct ?>% OFF</span>
               <?php elseif ($product['is_featured']): ?>
-                <span class="baps-product-badge featured">New</span>
+                <span class="ssk-product-badge featured">New</span>
               <?php endif; ?>
               <img src="<?= $imgUrl ?>" alt="<?= htmlspecialchars($product['name']) ?>" loading="lazy" decoding="async" width="200" height="200">
             </div>
 
-            <div class="baps-product-info">
-              <h3 class="baps-product-name"><?= htmlspecialchars($product['name']) ?></h3>
-              <div class="baps-product-sub"><?= htmlspecialchars($product['dept_name']) ?></div>
-              <div class="baps-product-price">
+            <div class="ssk-product-info">
+              <h3 class="ssk-product-name"><?= htmlspecialchars($product['name']) ?></h3>
+              <div class="ssk-product-sub"><?= htmlspecialchars($product['dept_name']) ?></div>
+              <div class="ssk-product-price">
                 <?= format_price($displayPrice) ?>
                 <?php if ($hasDiscount): ?>
                   <span class="old-price"><?= format_price($price) ?></span>

@@ -1,6 +1,7 @@
 <?php
 /**
- * BAPS Store - Main Header Template
+ * SSK Store - Main Header Template
+ * Shri Sahajanand Sahitya Kendra (Kalakunj Mandir, Surat)
  */
 
 require_once __DIR__ . '/config.php';
@@ -22,9 +23,36 @@ $pageTitle = $pageTitle ?? (SITE_NAME . ' — ' . SITE_TAGLINE);
   <title><?= htmlspecialchars($pageTitle) ?></title>
 <?php
 $scriptName = basename($_SERVER['PHP_SELF'] ?? '');
-$isNoIndex = in_array($scriptName, ['cart.php', 'checkout.php', 'account.php', 'order-success.php']) || !empty($_GET['q']);
+$isNoIndex = in_array($scriptName, ['cart.php', 'checkout.php', 'account.php', 'order-success.php', 'login.php', 'register.php', 'forgot-password.php', 'reset-password.php']) || !empty($_GET['q']);
+
+// Accurate canonical URL calculation (Finding SEO-1)
+if (!isset($canonicalUrl)) {
+    if (isset($product) && !empty($product['id'])) {
+        $canonicalUrl = SITE_URL . '/product.php?id=' . (int)$product['id'];
+    } elseif ($scriptName === 'catalog.php') {
+        $params = [];
+        if (!empty($_GET['cat'])) $params['cat'] = (int)$_GET['cat'];
+        elseif (!empty($_GET['dept'])) $params['dept'] = (int)$_GET['dept'];
+        $canonicalUrl = SITE_URL . '/catalog.php' . (!empty($params) ? '?' . http_build_query($params) : '');
+    } elseif ($scriptName === 'pages.php' && !empty($_GET['slug'])) {
+        $canonicalUrl = SITE_URL . '/pages.php?slug=' . urlencode($_GET['slug']);
+    } elseif ($scriptName === 'index.php') {
+        $canonicalUrl = SITE_URL . '/';
+    } else {
+        $canonicalUrl = SITE_URL . '/' . ltrim(strtok($_SERVER['REQUEST_URI'] ?? '', '?'), '/');
+    }
+}
+
+// Per-product meta description and OG image
+if (isset($product)) {
+    if (empty($metaDescription) && !empty($product['short_description'])) {
+        $metaDescription = strip_tags($product['short_description']);
+    }
+    if (empty($ogImage) && !empty($product['image'])) {
+        $ogImage = get_product_image_url($product['image'], $product['name']);
+    }
+}
 $metaDescription = $metaDescription ?? 'SSK Store - Shri Sahajanand Sahitya Kendra (Kalakunj Mandir, Surat). Explore sacred scriptures, Vachanamrut, handcrafted tulsi kanthis, ghar mandirs, brass puja items, and devotional accessories.';
-$currentCleanUrl = SITE_URL . '/' . ltrim(strtok($_SERVER['REQUEST_URI'] ?? '', '?'), '/');
 $ogImage = $ogImage ?? (SITE_URL . '/assets/brand/logo.png');
 ?>
   <meta name="description" content="<?= htmlspecialchars($metaDescription) ?>">
@@ -32,7 +60,7 @@ $ogImage = $ogImage ?? (SITE_URL . '/assets/brand/logo.png');
     <meta name="robots" content="noindex, nofollow">
   <?php else: ?>
     <meta name="robots" content="index, follow, max-image-preview:large">
-    <link rel="canonical" href="<?= htmlspecialchars($currentCleanUrl) ?>">
+    <link rel="canonical" href="<?= htmlspecialchars($canonicalUrl) ?>">
   <?php endif; ?>
 
   <!-- Open Graph & Social Sharing -->
@@ -40,7 +68,7 @@ $ogImage = $ogImage ?? (SITE_URL . '/assets/brand/logo.png');
   <meta property="og:site_name" content="SSK Store — Shri Sahajanand Sahitya Kendra">
   <meta property="og:title" content="<?= htmlspecialchars($pageTitle) ?>">
   <meta property="og:description" content="<?= htmlspecialchars($metaDescription) ?>">
-  <meta property="og:url" content="<?= htmlspecialchars($currentCleanUrl) ?>">
+  <meta property="og:url" content="<?= htmlspecialchars($canonicalUrl) ?>">
   <meta property="og:image" content="<?= htmlspecialchars($ogImage) ?>">
 
   <!-- Twitter Card -->
@@ -91,7 +119,7 @@ $ogImage = $ogImage ?? (SITE_URL . '/assets/brand/logo.png');
       "priceCurrency": "INR",
       "price": "<?= number_format((float)($product['sale_price'] ?: $product['price']), 2, '.', '') ?>",
       "availability": "<?= $product['stock_qty'] > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock' ?>",
-      "url": "<?= htmlspecialchars($currentCleanUrl . '?id=' . $product['id']) ?>"
+      "url": "<?= htmlspecialchars($canonicalUrl) ?>"
     }
   }
   </script>

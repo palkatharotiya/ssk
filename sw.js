@@ -10,9 +10,8 @@ const IMAGE_CACHE = `ssk-images-${CACHE_VERSION}`;
 
 const MAX_IMAGE_CACHE_ENTRIES = 60;
 
-// App Shell assets precached on install
+// App Shell assets precached on install (Excludes personalized root '/')
 const PRECACHE_ASSETS = [
-  '/',
   '/offline.html',
   '/manifest.webmanifest',
   '/assets/css/theme.css',
@@ -76,30 +75,47 @@ function shouldBypassCache(url, request) {
   return false;
 }
 
-// 1. Install Event: Precache app shell
+// 1. Install Event: Non-atomic precache of critical assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(SHELL_CACHE).then((cache) => {
-      return cache.addAll(PRECACHE_ASSETS).catch((err) => {
-        console.warn('[SW] Precache non-critical failure:', err);
-      });
+    caches.open(SHELL_CACHE).then(async (cache) => {
+      await Promise.allSettled(
+        PRECACHE_ASSETS.map(async (url) => {
+          try {
+            const response = await fetch(url, { cache: 'no-cache' });
+            if (response && (response.ok || response.type === 'opaque')) {
+              await cache.put(url, response);
+            }
+          } catch (err) {
+            console.warn('[SW] Non-critical precache bypass for:', url, err);
+          }
+        })
+      );
     }).then(() => self.skipWaiting())
   );
 });
 
-// 2. Activate Event: Cleanup stale caches and claim clients
+// 2. Activate Event: Enable navigation preload & cleanup stale caches
 self.addEventListener('activate', (event) => {
   const currentCaches = [SHELL_CACHE, STATIC_CACHE, IMAGE_CACHE];
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
+    (async () => {
+      if (self.registration.navigationPreload) {
+        try {
+          await self.registration.navigationPreload.enable();
+        } catch (e) {
+          // Non-supporting browser fallback
+        }
+      }
+      const keys = await caches.keys();
+      await Promise.all(
         keys.map((key) => {
           if (!currentCaches.includes(key)) {
             return caches.delete(key);
           }
         })
       );
-    }).then(() => self.clients.claim())
+    })().then(() => self.clients.claim())
   );
 });
 
@@ -123,21 +139,23 @@ self.addEventListener('fetch', (event) => {
     return; // Browser performs default network fetch
   }
 
-  // A. Navigations (HTML pages): Network-First with Offline Page Fallback
+  // A. Navigations (HTML pages): Network-First with Navigation Preload & Offline Page Fallback
   if (request.mode === 'navigate' || request.destination === 'document') {
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          // If valid, return live response
-          return response;
-        })
-        .catch(async () => {
+      (async () => {
+        try {
+          const preloadResponse = await event.preloadResponse;
+          if (preloadResponse) return preloadResponse;
+
+          return await fetch(request);
+        } catch (err) {
           // Network failed: return cached page if available or offline.html
           const cached = await caches.match(request);
           if (cached) return cached;
           const offlinePage = await caches.match('/offline.html');
           return offlinePage || new Response('You are offline.', { status: 503, headers: { 'Content-Type': 'text/plain' } });
-        })
+        }
+      })()
     );
     return;
   }
@@ -145,7 +163,7 @@ self.addEventListener('fetch', (event) => {
   // B. Images: Cache-First with size limit
   if (request.destination === 'image') {
     event.respondWith(
-      caches.match(request).then((cachedResponse) => {
+      caches.match(request, { ignoreSearch: true }).then((cachedResponse) => {
         if (cachedResponse) return cachedResponse;
 
         return fetch(request).then((networkResponse) => {
@@ -159,7 +177,6 @@ self.addEventListener('fetch', (event) => {
           });
           return networkResponse;
         }).catch(() => {
-          // Placeholder or empty response on network failure
           return caches.match('/assets/icons/icon-192.png');
         });
       })
@@ -167,10 +184,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // C. Static Stylesheets & Scripts: Stale-While-Revalidate
+  // C. Static Stylesheets & Scripts: Stale-While-Revalidate with ignoreSearch
   if (request.destination === 'style' || request.destination === 'script' || request.destination === 'font') {
     event.respondWith(
-      caches.match(request).then((cachedResponse) => {
+      caches.match(request, { ignoreSearch: true }).then((cachedResponse) => {
         const fetchPromise = fetch(request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const responseToCache = networkResponse.clone();

@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">SSK Store</string>
-    <string name="website_url">http://10.0.2.2:8000/</string>
-    <string name="live_url">http://10.0.2.2:8000/</string>
+    <string name="website_url">https://sskstore.in/</string>
+    <string name="dev_url">http://10.0.2.2:8000/</string>
     <string name="offline_title">No Internet Connection</string>
     <string name="offline_desc">Please check your network connection and try again.</string>
     <string name="retry_btn">Retry Connection</string>

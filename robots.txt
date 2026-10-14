@@ -21,4 +21,4 @@ Disallow: /order-success.php
 Disallow: /*?*q=
 Disallow: /*?*action=
 
-Sitemap: /sitemap.xml
+Sitemap: https://sskstore.in/sitemap.xml

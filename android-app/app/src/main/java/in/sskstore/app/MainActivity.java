@@ -1,4 +1,4 @@
-package store.baps;
+package in.sskstore.app;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -32,9 +32,6 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout offlineLayout;
     private Button btnRetry;
 
-    // Default URL to load: points to the running SSK store
-    private static final String STORE_URL = "http://10.0.2.2:8000/";
-
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,9 +63,10 @@ public class MainActivity extends AppCompatActivity {
         settings.setBuiltInZoomControls(false);
         settings.setDisplayZoomControls(false);
         settings.setSupportZoom(false);
-        settings.setAllowFileAccess(true);
+        settings.setAllowFileAccess(false); // Security hardening: disable local file access
+        settings.setAllowContentAccess(false);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
 
         // Add SSK Android App User Agent
         String defaultUA = settings.getUserAgentString();
@@ -77,7 +75,7 @@ public class MainActivity extends AppCompatActivity {
         // Add JavaScript Interface
         webView.addJavascriptInterface(new WebAppInterface(this), "AndroidBridge");
 
-        // Custom WebViewClient
+        // Custom WebViewClient with intent filtering for UPI, WhatsApp & Phone
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
@@ -107,13 +105,14 @@ public class MainActivity extends AppCompatActivity {
                 String url = request.getUrl().toString();
 
                 // Intercept UPI payment intents, telephone calls, WhatsApp, and emails
-                if (url.startsWith("upi:") || url.startsWith("tel:") || url.startsWith("mailto:") || url.startsWith("whatsapp:")) {
+                if (url.startsWith("upi:") || url.startsWith("tel:") || url.startsWith("mailto:") || 
+                    url.startsWith("whatsapp:") || url.contains("wa.me/") || url.contains("api.whatsapp.com/")) {
                     try {
                         Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
                         startActivity(intent);
                         return true;
                     } catch (Exception e) {
-                        Toast.makeText(MainActivity.this, "No supported application found to handle this action.", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, "No supported application found to complete this action.", Toast.LENGTH_SHORT).show();
                         return true;
                     }
                 }
@@ -167,10 +166,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadStore() {
+        String storeUrl = getString(R.string.website_url);
         if (isNetworkAvailable()) {
             offlineLayout.setVisibility(View.GONE);
             swipeRefresh.setVisibility(View.VISIBLE);
-            webView.loadUrl(STORE_URL);
+            webView.loadUrl(storeUrl);
         } else {
             showOfflineScreen();
         }

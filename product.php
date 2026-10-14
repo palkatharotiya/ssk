@@ -9,16 +9,30 @@ require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/functions.php';
 
 $id = (int)($_GET['id'] ?? 0);
-$product = db_fetch_one("SELECT p.*, d.name as dept_name, c.name as cat_name 
-                         FROM products p 
-                         LEFT JOIN departments d ON p.department_id = d.id 
-                         LEFT JOIN categories c ON p.category_id = c.id 
-                         WHERE p.id = ? AND p.is_active = 1", [$id]);
+$slug = trim($_GET['slug'] ?? '');
+
+if ($id > 0) {
+    $product = db_fetch_one("SELECT p.*, d.name as dept_name, c.name as cat_name 
+                             FROM products p 
+                             LEFT JOIN departments d ON p.department_id = d.id 
+                             LEFT JOIN categories c ON p.category_id = c.id 
+                             WHERE p.id = ? AND p.is_active = 1", [$id]);
+} elseif (!empty($slug)) {
+    $product = db_fetch_one("SELECT p.*, d.name as dept_name, c.name as cat_name 
+                             FROM products p 
+                             LEFT JOIN departments d ON p.department_id = d.id 
+                             LEFT JOIN categories c ON p.category_id = c.id 
+                             WHERE p.slug = ? AND p.is_active = 1", [$slug]);
+} else {
+    $product = null;
+}
 
 if (!$product) {
     header('Location: catalog.php');
     exit;
 }
+
+$id = (int)$product['id'];
 
 // Increment views
 db_query("UPDATE products SET views = views + 1 WHERE id = ?", [$id]);

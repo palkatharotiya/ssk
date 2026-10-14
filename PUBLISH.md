@@ -15,7 +15,7 @@ Before deploying, ensure your web hosting environment meets these requirements:
   * `mbstring` (for multilingual Gujarati text handling).
   * `curl`, `json`, `openssl`, `session`.
 * **Database**:
-  * Default Option: SQLite 3 (already bundled and configured inside `baps_store.sqlite`).
+  * Default Option: SQLite 3 (portable local fallback in `ssk_store.sqlite`).
   * Scalable Option: MySQL 5.7+ or MariaDB 10.3+.
 * **Web Server**: Apache 2.4+ (with `mod_rewrite`, `mod_deflate`, `mod_headers`, `mod_expires` enabled) or Nginx.
 * **SSL Certificate**: HTTPS is mandatory for secure checkout, cookies, and PWA installation. Free Let's Encrypt SSL is sufficient.
@@ -178,5 +178,5 @@ Once files are live, walk through this checklist on both Desktop and Mobile:
 If you ever need to roll back a release:
 1. Keep the previous version's zip archive and database backup saved safely (see `BACKUP.md`).
 2. If an issue occurs, simply restore the previous directory files via File Manager or SFTP.
-3. Restore `baps_store.sqlite` from the pre-deployment backup copy.
+3. Restore `ssk_store.sqlite` from the pre-deployment backup copy.
 4. Clear your browser cache and Service Worker to verify restoration.

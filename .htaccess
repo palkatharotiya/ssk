@@ -9,10 +9,17 @@ Options -Indexes
 # 2. DEFAULT CHARSET
 AddDefaultCharset UTF-8
 
-# 3. BLOCK ACCESS TO SENSITIVE DIRECTORIES
+# 3. BLOCK ACCESS TO SENSITIVE DIRECTORIES & REWRITE RULES
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteRule ^(includes|database|logs|tools|vendor|\.git)/ - [F,L,NC]
+
+    # Dynamic SEO XML Sitemap
+    RewriteRule ^sitemap\.xml$ sitemap.php [L]
+
+    # Clean SEO Slugs (Backward-compatible with original query params)
+    RewriteRule ^product/([a-zA-Z0-9_-]+)/?$ product.php?slug=$1 [L,QSA]
+    RewriteRule ^page/([a-zA-Z0-9_-]+)/?$ pages.php?slug=$1 [L,QSA]
 </IfModule>
 
 # 4. BLOCK ACCESS TO SENSITIVE FILES & EXTENSIONS (Apache 2.4 with 2.2 fallback)
@@ -27,7 +34,7 @@ AddDefaultCharset UTF-8
 </FilesMatch>
 
 # Specifically protect database, schema and backup files
-<FilesMatch "(database\.sql|baps_store\.sqlite|baps_store\.sqlite\.demo_backup|\.git)">
+<FilesMatch "(database\.sql|ssk_store\.sqlite|baps_store\.sqlite|.*\.sqlite.*|\.git)">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>
@@ -93,3 +100,13 @@ ErrorDocument 404 /404.php
     # HTML & Dynamic Content (revalidate)
     ExpiresByType text/html "access plus 0 seconds"
 </IfModule>
+
+# 9. SERVICE WORKER NO-CACHE DIRECTIVE (PWA-1 Requirement)
+<Files "sw.js">
+    <IfModule mod_headers.c>
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires 0
+    </IfModule>
+</Files>
+

@@ -116,6 +116,15 @@ assert_test("Speed: asset_url appends filemtime cache-busting query parameter", 
 $renderedPic = render_picture('non_existent_img.jpg', 'Test Alt', ['width' => 300, 'height' => 300]);
 assert_test("Speed: render_picture fallback outputs valid img tag with dimensions", strpos($renderedPic, '<img') !== false && strpos($renderedPic, 'width="300"') !== false);
 
+// Phase 5: SEO, PWA, Android App & Branding Tests
+assert_test("SEO: Dynamic sitemap.php file exists", file_exists(ROOT_PATH . 'sitemap.php'));
+assert_test("SEO: sitemap.xml exists and contains valid XML markup", file_exists(ROOT_PATH . 'sitemap.xml') && strpos(file_get_contents(ROOT_PATH . 'sitemap.xml'), '<urlset') !== false);
+assert_test("SEO: robots.txt contains absolute Sitemap URL", file_exists(ROOT_PATH . 'robots.txt') && strpos(file_get_contents(ROOT_PATH . 'robots.txt'), 'Sitemap: https://') !== false);
+assert_test("PWA: Service Worker sw.js exists", file_exists(ROOT_PATH . 'sw.js'));
+assert_test("PWA: Web App manifest.webmanifest exists", file_exists(ROOT_PATH . 'manifest.webmanifest'));
+assert_test("Android: MainActivity.java exists in in.sskstore.app package", file_exists(ROOT_PATH . 'android-app/app/src/main/java/in/sskstore/app/MainActivity.java'));
+assert_test("Android: WebAppInterface.java exists in in.sskstore.app package", file_exists(ROOT_PATH . 'android-app/app/src/main/java/in/sskstore/app/WebAppInterface.java'));
+
 echo "\n----------------------------------------------------\n";
 echo " Test Results: Passed: {$passed} | Failed: {$failed}\n";
 echo "====================================================\n";

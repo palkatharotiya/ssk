@@ -1,6 +1,7 @@
 <?php
 /**
- * BAPS Store - CMS Page Renderer & Contact Form
+ * SSK Store - CMS Page Renderer & Contact Form
+ * Shri Sahajanand Sahitya Kendra (Kalakunj Mandir, Surat)
  */
 
 require_once __DIR__ . '/includes/config.php';

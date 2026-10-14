@@ -1,9 +1,10 @@
 -- ============================================================
--- BAPS STORE - Complete Database Schema & Mock Data
+-- SSK STORE - Complete Database Schema & Mock Data
+-- Shri Sahajanand Sahitya Kendra (Kalakunj Mandir, Surat)
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS baps_store CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE baps_store;
+CREATE DATABASE IF NOT EXISTS ssk_store CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE ssk_store;
 
 -- ============================================================
 -- SETTINGS TABLE

@@ -6,14 +6,13 @@
 (function() {
   'use strict';
 
-  // 1. Standalone Mode Detection (Never show install UI if already running as installed app)
+  // 1. Standalone Mode Detection
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                        window.navigator.standalone === true ||
                        document.referrer.includes('android-app://');
 
   if (isStandalone) {
     document.documentElement.classList.add('pwa-standalone');
-    return;
   }
 
   // 2. Localization helper
@@ -27,7 +26,7 @@
     return (strings[lang] && strings[lang][key]) || (strings.en && strings.en[key]) || '';
   }
 
-  // 3. Register Service Worker with update detection
+  // 3. Register Service Worker with safe update detection (Runs even in standalone mode)
   if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js', { scope: '/' })
@@ -37,6 +36,10 @@
             const newWorker = reg.installing;
             if (newWorker) {
               newWorker.addEventListener('statechange', () => {
+                // Never interrupt or force swap during active checkout flow
+                if (window.location.pathname.includes('checkout.php')) {
+                  return;
+                }
                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                   showUpdateToast(newWorker);
                 }
@@ -48,6 +51,11 @@
           console.warn('[PWA] Service Worker registration failed:', err);
         });
     });
+  }
+
+  // If already running inside installed standalone PWA, suppress installation banners
+  if (isStandalone) {
+    return;
   }
 
   function showUpdateToast(worker) {

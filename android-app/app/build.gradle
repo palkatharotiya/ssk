@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace 'store.baps'
+    namespace 'in.sskstore.app'
     compileSdk 34
 
     defaultConfig {
-        applicationId "store.baps"
+        applicationId "in.sskstore.app"
         minSdk 21
         targetSdk 34
         versionCode 1

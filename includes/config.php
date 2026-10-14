@@ -24,7 +24,7 @@ if (IS_PRODUCTION) {
 
 // Database Configuration
 define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
-define('DB_NAME', getenv('DB_NAME') ?: 'baps_store');
+define('DB_NAME', getenv('DB_NAME') ?: 'ssk_store');
 define('DB_USER', getenv('DB_USER') ?: 'root');
 define('DB_PASS', getenv('DB_PASS') ?: '');
 define('DB_CHARSET', 'utf8mb4');

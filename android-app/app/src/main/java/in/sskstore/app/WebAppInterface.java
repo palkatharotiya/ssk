@@ -1,4 +1,4 @@
-package store.baps;
+package in.sskstore.app;
 
 import android.content.Context;
 import android.content.Intent;
@@ -7,6 +7,7 @@ import android.widget.Toast;
 
 /**
  * JavaScript interface bridge between web app and native Android runtime.
+ * Provides native sharing, toast notifications, and device bridge methods.
  */
 public class WebAppInterface {
     private final Context mContext;

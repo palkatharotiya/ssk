@@ -1,7 +1,8 @@
 <?php
 /**
- * BAPS Store - Database Connection Handler
- * Supports both MySQL and SQLite fallback
+ * SSK Store - Database Connection Handler
+ * Shri Sahajanand Sahitya Kendra (Kalakunj Mandir, Surat)
+ * Supports both MySQL and portable SQLite fallback
  */
 
 require_once __DIR__ . '/config.php';
@@ -37,7 +38,10 @@ class DB {
             }
 
             // Fallback to SQLite for zero-config portable local development
-            $sqlitePath = ROOT_PATH . 'baps_store.sqlite';
+            $sqlitePath = ROOT_PATH . 'ssk_store.sqlite';
+            if (!file_exists($sqlitePath) && file_exists(ROOT_PATH . 'baps_store.sqlite')) {
+                @rename(ROOT_PATH . 'baps_store.sqlite', $sqlitePath);
+            }
             $needsInit = !file_exists($sqlitePath) || filesize($sqlitePath) === 0;
 
             try {
@@ -349,7 +353,7 @@ class DB {
 
         // Coupons
         $db->prepare("INSERT OR IGNORE INTO coupons (code, type, value, min_order_amount, is_active) VALUES (?, ?, ?, ?, 1)")
-           ->execute(['BAPS10', 'percentage', 10.0, 500.0]);
+           ->execute(['SSK10', 'percentage', 10.0, 500.0]);
         $db->prepare("INSERT OR IGNORE INTO coupons (code, type, value, min_order_amount, is_active) VALUES (?, ?, ?, ?, 1)")
            ->execute(['DIWALI50', 'fixed', 50.0, 750.0]);
 
@@ -393,7 +397,7 @@ class DB {
             [18, 8, 'Spiritual Caps', 'caps', 2],
             [19, 9, 'Wall Calendars', 'wall-calendars', 1],
             [20, 9, 'Diaries & Planners', 'diaries', 2],
-            [21, 10, 'BAPS Kirtans', 'kirtans', 1],
+            [21, 10, 'Devotional Kirtans', 'kirtans', 1],
             [22, 10, 'Pravachans & Discourses', 'pravachans', 2]
         ];
         $catStmt = $db->prepare("INSERT OR IGNORE INTO categories (id, department_id, name, slug, sort_order) VALUES (?, ?, ?, ?, ?)");
@@ -436,7 +440,7 @@ class DB {
             [1, 1, 3, 'My Swaminarayan Activity Book', 'my-swaminarayan-activity-book', 'Fun activity book for children with coloring and puzzles.', 'Colorful activity book designed for children aged 5-10. Contains puzzles, coloring pages, word searches and stories about Bhagwan Swaminarayan and the guru parampara.', 'BK-EN-004', 120.00, 99.00, 200, 'activity-book.jpg', 1, 1, 1],
             [1, 1, 4, 'Pramukh Swami Maharaj - His Life & Legacy', 'pramukh-swami-maharaj-life-legacy', 'A comprehensive biography of His Holiness Pramukh Swami Maharaj.', 'This definitive biography chronicles the extraordinary life of His Holiness Pramukh Swami Maharaj, the fifth spiritual successor of Bhagwan Swaminarayan. A 500-page hardcover with rare photographs and inspiring anecdotes.', 'BK-EN-005', 1200.00, 999.00, 30, 'psm-biography.jpg', 1, 1, 1],
             [1, 1, 5, 'Understanding Hinduism', 'understanding-hinduism', 'A clear introduction to Hindu philosophy, traditions and practice.', 'An accessible guide exploring the core concepts, practices, and traditions of Hinduism. Written for both beginners and those seeking deeper understanding. Illustrated edition.', 'BK-EN-006', 350.00, null, 60, 'understanding-hinduism.jpg', 1, 0, 0],
-            [1, 1, 8, 'Mahant Swami Maharaj - In the Joy of Others', 'mahant-swami-maharaj-joy-others', 'The life and compassionate teachings of Mahant Swami Maharaj.', 'A beautifully illustrated book capturing the spiritual leadership and compassionate service of His Holiness Mahant Swami Maharaj, the current guru of BAPS.', 'BK-EN-008', 800.00, 699.00, 45, 'msm-book.jpg', 1, 1, 1],
+            [1, 1, 8, 'Mahant Swami Maharaj - In the Joy of Others', 'mahant-swami-maharaj-joy-others', 'The life and compassionate teachings of Mahant Swami Maharaj.', 'A beautifully illustrated book capturing the spiritual leadership and compassionate service of His Holiness Mahant Swami Maharaj.', 'BK-EN-008', 800.00, 699.00, 45, 'msm-book.jpg', 1, 1, 1],
             [1, 2, 9, 'Vachanamrut (Gujarati - Original Edition)', 'vachanamrut-gujarati-original', 'The original Vachanamrut text in Gujarati with gold embossing.', 'The original Vachanamrut scripture in Gujarati, the divine nectar of Bhagwan Swaminarayan discourses. Premium hardcover binding with gold-embossed lettering.', 'BK-GJ-001', 400.00, 350.00, 100, 'vachanamrut-gujarati.jpg', 1, 1, 1],
             [1, 2, 10, 'Jeevan No Aachar', 'jeevan-no-aachar', 'Practical guide to spiritual and ethical living in Gujarati.', 'A practical guide to applying spiritual principles in daily life. Covers topics such as devotion, discipline, family harmony, and developing divine virtues.', 'BK-GJ-002', 175.00, null, 80, 'jeevan-aachar.jpg', 1, 0, 0],
             [1, 3, 17, 'Bhagwan Swaminarayan - Jeevan Charitra (Hindi)', 'bhagwan-swaminarayan-jeevan-charitra-hindi', 'Life story of Bhagwan Swaminarayan in Hindi language.', 'An illustrated biography of Bhagwan Swaminarayan from His childhood as Ghanshyam in Chhapaiya to the establishment of the Swaminarayan Sampraday in Gujarat.', 'BK-HI-003', 350.00, 299.00, 40, 'swaminarayan-hindi.jpg', 1, 1, 1],
@@ -466,15 +470,15 @@ class DB {
             [6, 14, null, 'Harikrishna Maharaj Murti - Marble (8 inch)', 'harikrishna-maharaj-murti-marble-8inch', 'White marble murti of Shri Harikrishna Maharaj.', 'Hand-carved white marble murti of Shri Harikrishna Maharaj in peaceful sitting posture. Detailed golden ornaments and crown. Height: 8 inches.', 'MR-002', 3500.00, null, 10, 'hkm-murti-marble.jpg', 1, 1, 0],
 
             // Agarbatti
-            [7, 15, null, 'BAPS Premium Agarbatti - Rose (Pack of 12)', 'baps-premium-agarbatti-rose-12', 'Pure rose fragrance incense sticks with low smoke.', 'Hand-rolled premium quality incense sticks with natural rose essential oil. Pack of 12 boxes (20 sticks each = 240 sticks). Low smoke formula made with temple-grade natural ingredients.', 'AG-001', 180.00, 149.00, 300, 'agarbatti-rose.jpg', 1, 1, 1],
-            [7, 15, null, 'BAPS Premium Agarbatti - Sandalwood (Pack of 12)', 'baps-premium-agarbatti-sandalwood-12', 'Authentic sandalwood aroma incense sticks.', 'Rich sandalwood aroma incense sticks creating a divine temple ambience. Pack of 12 boxes (20 sticks each = 240 sticks). Pure and natural ingredients.', 'AG-002', 200.00, null, 250, 'agarbatti-sandalwood.jpg', 1, 0, 0],
+            [7, 15, null, 'SSK Premium Agarbatti - Rose (Pack of 12)', 'ssk-premium-agarbatti-rose-12', 'Pure rose fragrance incense sticks with low smoke.', 'Hand-rolled premium quality incense sticks with natural rose essential oil. Pack of 12 boxes (20 sticks each = 240 sticks). Low smoke formula made with temple-grade natural ingredients.', 'AG-001', 180.00, 149.00, 300, 'agarbatti-rose.jpg', 1, 1, 1],
+            [7, 15, null, 'SSK Premium Agarbatti - Sandalwood (Pack of 12)', 'ssk-premium-agarbatti-sandalwood-12', 'Authentic sandalwood aroma incense sticks.', 'Rich sandalwood aroma incense sticks creating a divine temple ambience. Pack of 12 boxes (20 sticks each = 240 sticks). Pure and natural ingredients.', 'AG-002', 200.00, null, 250, 'agarbatti-sandalwood.jpg', 1, 0, 0],
 
             // Apparel
-            [8, 17, null, 'Mandir T-Shirt - White (100% Cotton)', 'mandir-tshirt-white-cotton', 'White cotton T-shirt featuring Akshardham motif.', 'Premium 100% combed cotton round-neck T-shirt featuring the Akshardham Mandir illustration. Breathable pre-shrunk fabric available in all sizes.', 'CL-001', 499.00, 399.00, 200, 'tshirt-mandir-white.jpg', 1, 1, 1],
+            [8, 17, null, 'Mandir T-Shirt - White (100% Cotton)', 'mandir-tshirt-white-cotton', 'White cotton T-shirt featuring Mandir motif.', 'Premium 100% combed cotton round-neck T-shirt featuring the Swaminarayan Mandir illustration. Breathable pre-shrunk fabric available in all sizes.', 'CL-001', 499.00, 399.00, 200, 'tshirt-mandir-white.jpg', 1, 1, 1],
 
             // Calendars
-            [9, 19, null, 'BAPS Wall Calendar 2027', 'baps-wall-calendar-2027', 'Annual wall calendar with international mandirs.', 'Beautifully designed wall calendar featuring stunning photography of BAPS mandirs worldwide. Includes Hindu festival dates, ekadashi tithis, and auspicious muhurats. Size: 14" x 22".', 'CD-001', 150.00, 120.00, 500, 'calendar-2027.jpg', 1, 1, 1],
-            [9, 20, null, 'BAPS Daily Planner Diary 2027', 'baps-daily-planner-diary-2027', 'Hardbound daily planner with inspirational satsang quotes.', 'A premium daily planner diary featuring inspiring spiritual quotes from Pramukh Swami Maharaj and Mahant Swami Maharaj, important dates, and bookmark ribbon. 365 pages.', 'CD-002', 350.00, 299.00, 200, 'diary-2027.jpg', 1, 1, 1]
+            [9, 19, null, 'SSK Mandir Wall Calendar 2027', 'ssk-mandir-wall-calendar-2027', 'Annual wall calendar with Swaminarayan mandirs.', 'Beautifully designed wall calendar featuring stunning photography of sacred Swaminarayan mandirs. Includes Hindu festival dates, ekadashi tithis, and auspicious muhurats. Size: 14" x 22".', 'CD-001', 150.00, 120.00, 500, 'calendar-2027.jpg', 1, 1, 1],
+            [9, 20, null, 'SSK Daily Planner Diary 2027', 'ssk-daily-planner-diary-2027', 'Hardbound daily planner with inspirational satsang quotes.', 'A premium daily planner diary featuring inspiring spiritual quotes from revered gurus, important dates, and bookmark ribbon. 365 pages.', 'CD-002', 350.00, 299.00, 200, 'diary-2027.jpg', 1, 1, 1]
         ];
 
         $prodStmt = $db->prepare("INSERT OR IGNORE INTO products (department_id, category_id, subcategory_id, name, slug, short_description, description, sku, price, sale_price, stock_qty, image, is_active, is_featured, on_sale) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
@@ -484,7 +488,7 @@ class DB {
 
         // Banners
         $banners = [
-            ['Welcome to BAPS Store', 'Official Online Store of BAPS Swaminarayan Sanstha', 'banner-welcome.jpg', 'catalog.php', 1],
+            ['Welcome to SSK Store', 'Official Devotional Store of Shri Sahajanand Sahitya Kendra (Kalakunj Mandir)', 'banner-welcome.jpg', 'catalog.php', 1],
             ['Sacred Publications & Scriptures', 'Discover Vachanamrut, Biographies & Audio-Visual Satsang', 'banner-books.jpg', 'catalog.php?dept=1', 2],
             ['Free Shipping Across India', 'Orders above ₹500 in Gujarat & ₹750 India-wide', 'banner-shipping.jpg', 'catalog.php', 3],
             ['Festival Specials & On Sale', 'Limited period discounts on holy murtis & ghar mandirs', 'banner-sale.jpg', 'catalog.php?on_sale=1', 4]

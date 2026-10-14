@@ -1672,7 +1672,7 @@ h1, h2, h3, h4, h5, h6 {
 /* ============================================================
    BAPS.STORE HOMEPAGE LAYOUT & PRODUCT VIEW
    ============================================================ */
-.baps-shipping-strip {
+.ssk-shipping-strip, .baps-shipping-strip {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1685,14 +1685,14 @@ h1, h2, h3, h4, h5, h6 {
   max-width: 1200px;
   box-shadow: var(--shadow-sm);
 }
-.baps-shipping-badge {
+.ssk-shipping-badge, .baps-shipping-badge {
   display: flex;
   align-items: center;
   gap: 0.85rem;
   padding-right: 2.5rem;
   border-right: 2px solid var(--border);
 }
-.baps-truck-icon {
+.ssk-truck-icon, .baps-truck-icon {
   width: 48px;
   height: 48px;
   background: #fee2e2;
@@ -1702,11 +1702,11 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   justify-content: center;
 }
-[data-theme="dark"] .baps-truck-icon {
+[data-theme="dark"] .ssk-truck-icon, [data-theme="dark"] .baps-truck-icon {
   background: rgba(220, 38, 38, 0.2);
   color: #f87171;
 }
-.baps-free-title {
+.ssk-free-title, .baps-free-title {
   display: block;
   font-size: 1.35rem;
   font-weight: 900;
@@ -1714,29 +1714,29 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: 0.5px;
   line-height: 1.1;
 }
-.baps-ship-title {
+.ssk-ship-title, .baps-ship-title {
   display: block;
   font-size: 0.95rem;
   font-weight: 800;
   color: var(--heading);
   letter-spacing: 1px;
 }
-.baps-shipping-details {
+.ssk-shipping-details, .baps-shipping-details {
   font-size: 0.875rem;
   color: var(--text);
   line-height: 1.6;
 }
-.baps-shipping-details div {
+.ssk-shipping-details div, .baps-shipping-details div {
   margin-bottom: 0.2rem;
 }
-.baps-shipping-details strong {
+.ssk-shipping-details strong, .baps-shipping-details strong {
   color: var(--heading);
 }
 
-.baps-section-container {
+.ssk-section-container, .baps-section-container {
   margin-bottom: 3.5rem;
 }
-.baps-section-header {
+.ssk-section-header, .baps-section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1745,7 +1745,7 @@ h1, h2, h3, h4, h5, h6 {
   padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--border);
 }
-.baps-section-header h2 {
+.ssk-section-header h2, .baps-section-header h2 {
   font-size: 1.6rem;
   font-weight: 700;
   color: var(--heading);
@@ -1753,7 +1753,7 @@ h1, h2, h3, h4, h5, h6 {
   text-align: center;
   flex: 1;
 }
-.baps-section-header .baps-view-all {
+.ssk-section-header .ssk-view-all, .baps-section-header .baps-view-all {
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--text-muted);
@@ -1762,11 +1762,11 @@ h1, h2, h3, h4, h5, h6 {
   right: 0;
   transition: color 0.2s;
 }
-.baps-section-header .baps-view-all:hover {
+.ssk-section-header .ssk-view-all:hover, .baps-section-header .baps-view-all:hover {
   color: var(--red);
 }
 
-.baps-products-grid {
+.ssk-products-grid, .baps-products-grid {
   display: grid !important;
   grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
   gap: 1.25rem !important;
@@ -1774,27 +1774,27 @@ h1, h2, h3, h4, h5, h6 {
   box-sizing: border-box !important;
 }
 @media (max-width: 1200px) {
-  .baps-products-grid {
+  .ssk-products-grid, .baps-products-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   }
 }
 @media (max-width: 900px) {
-  .baps-products-grid {
+  .ssk-products-grid, .baps-products-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
 }
 @media (max-width: 640px) {
-  .baps-products-grid {
+  .ssk-products-grid, .baps-products-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 0.75rem !important;
   }
-  .baps-shipping-strip {
+  .ssk-shipping-strip, .baps-shipping-strip {
     flex-direction: column;
     text-align: center;
     gap: 1rem;
     padding: 1rem;
   }
-  .baps-shipping-badge {
+  .ssk-shipping-badge, .baps-shipping-badge {
     border-right: none;
     border-bottom: 1px solid var(--border);
     padding-right: 0;
@@ -1803,7 +1803,7 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
-.baps-product-card {
+.ssk-product-card, .baps-product-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -1817,12 +1817,12 @@ h1, h2, h3, h4, h5, h6 {
   width: 100%;
   box-sizing: border-box;
 }
-.baps-product-card:hover {
+.ssk-product-card:hover, .baps-product-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 24px rgba(0,0,0,0.1);
   border-color: var(--gold);
 }
-.baps-product-thumb {
+.ssk-product-thumb, .baps-product-thumb {
   position: relative;
   aspect-ratio: 1/1;
   height: 200px;
@@ -1834,7 +1834,7 @@ h1, h2, h3, h4, h5, h6 {
   padding: 0.75rem;
   box-sizing: border-box;
 }
-.baps-product-thumb img {
+.ssk-product-thumb img, .baps-product-thumb img {
   max-width: 100%;
   max-height: 100%;
   width: auto;
@@ -1842,10 +1842,10 @@ h1, h2, h3, h4, h5, h6 {
   object-fit: contain;
   transition: transform 0.35s ease;
 }
-.baps-product-card:hover .baps-product-thumb img {
+.ssk-product-card:hover .ssk-product-thumb img, .baps-product-card:hover .baps-product-thumb img {
   transform: scale(1.06);
 }
-.baps-product-badge {
+.ssk-product-badge, .baps-product-badge {
   position: absolute;
   top: 8px;
   left: 8px;
@@ -1858,20 +1858,20 @@ h1, h2, h3, h4, h5, h6 {
   z-index: 2;
   text-transform: uppercase;
 }
-.baps-product-badge.sale {
+.ssk-product-badge.sale, .baps-product-badge.sale {
   background: #dc2626;
 }
-.baps-product-badge.featured {
+.ssk-product-badge.featured, .baps-product-badge.featured {
   background: #d97706;
 }
-.baps-product-info {
+.ssk-product-info, .baps-product-info {
   padding: 1rem 0.75rem;
   text-align: center;
   display: flex;
   flex-direction: column;
   flex: 1;
 }
-.baps-product-name {
+.ssk-product-name, .baps-product-name {
   font-size: 0.8875rem;
   font-weight: 600;
   color: var(--heading);
@@ -1883,19 +1883,19 @@ h1, h2, h3, h4, h5, h6 {
   overflow: hidden;
   min-height: 2.4rem;
 }
-.baps-product-sub {
+.ssk-product-sub, .baps-product-sub {
   font-size: 0.75rem;
   color: var(--text-muted);
   margin-bottom: 0.5rem;
   min-height: 1.1rem;
 }
-.baps-product-price {
+.ssk-product-price, .baps-product-price {
   font-size: 1.05rem;
   font-weight: 800;
   color: var(--heading);
   margin-top: auto;
 }
-.baps-product-price .old-price {
+.ssk-product-price .old-price, .baps-product-price .old-price {
   font-size: 0.85rem;
   color: var(--text-muted);
   text-decoration: line-through;

@@ -1,6 +1,7 @@
 <?php
 /**
- * BAPS Store - Main Footer Template
+ * SSK Store - Main Footer Template
+ * Shri Sahajanand Sahitya Kendra (Kalakunj Mandir, Surat)
  */
 ?>
   <!-- Footer -->
