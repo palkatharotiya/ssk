@@ -34,22 +34,22 @@
 ---
 
 ## Phase 3: P1 + P2 Fixes (High/Medium Vulnerabilities & Logic Gaps)
-- [ ] **Task 3.1:** Enforce stock boundaries in `add_to_cart` and `update_cart_quantity`; add out-of-stock badges and disable buttons.
-- [ ] **Task 3.2:** Resolve disabled admin session persistence; enforce active status on every request.
-- [ ] **Task 3.3:** Add brute-force login throttling (`login_attempts` table) and contact form honeypots.
-- [ ] **Task 3.4:** Fix guest checkout account collisions and build password reset flow.
-- [ ] **Task 3.5:** Build transactional email sender (PHPMailer with fallback to `logs/mail.log`).
-- [ ] **Task 3.6:** Fix `admin/categories.php` missing `is_active` input; add subcategory management UI.
-- [ ] **Task 3.7:** Implement Gujarati/Unicode transliteration helper for clean URL slugs.
-- [ ] **Task 3.8:** Replace product hard delete with soft delete (`is_active = 0`, `deleted_at`).
-- [ ] **Task 3.9:** Harden file uploads in `banners.php` and `bulk_import.php` (MIME validation, random names, GD re-encoding).
-- [ ] **Task 3.10:** Fix XSS vulnerabilities in `main.js`, `pages.php`, and image attributes.
-- [ ] **Task 3.11:** Implement lazy session initialization in `config.php`.
-- [ ] **Task 3.12:** Fix double-submit button disable bug in `main.js`.
-- [ ] **Task 3.13:** Resolve CSS self-referential variable cycles and syntax errors in `style.css`.
-- [ ] **Task 3.14:** Fix mobile layout overflows on 360px viewports (checkout, account, admin).
-- [ ] **Task 3.15:** Add dynamic shipping calculation by state across all 28 states and 8 union territories.
-- [ ] **Task 3.16:** Eliminate N+1 wishlist queries and add database indexes.
+- [x] **Task 3.1:** Enforce stock boundaries in `add_to_cart` and `update_cart_quantity`; add out-of-stock badges and disable buttons.
+- [x] **Task 3.2:** Resolve disabled admin session persistence; enforce active status on every request.
+- [x] **Task 3.3:** Add brute-force login throttling (`login_attempts` table) and contact form honeypots.
+- [x] **Task 3.4:** Fix guest checkout account collisions and build password reset flow.
+- [x] **Task 3.5:** Build transactional email sender (PHPMailer with fallback to `logs/mail.log`).
+- [x] **Task 3.6:** Fix `admin/categories.php` missing `is_active` input; add subcategory management UI.
+- [x] **Task 3.7:** Implement Gujarati/Unicode transliteration helper for clean URL slugs.
+- [x] **Task 3.8:** Replace product hard delete with soft delete (`is_active = 0`, `deleted_at`).
+- [x] **Task 3.9:** Harden file uploads in `banners.php` and `bulk_import.php` (MIME validation, random names, GD re-encoding).
+- [x] **Task 3.10:** Fix XSS vulnerabilities in `main.js`, `pages.php`, and image attributes.
+- [x] **Task 3.11:** Implement lazy session initialization in `config.php`.
+- [x] **Task 3.12:** Fix double-submit button disable bug in `main.js`.
+- [x] **Task 3.13:** Resolve CSS self-referential variable cycles and syntax errors in `style.css`.
+- [x] **Task 3.14:** Fix mobile layout overflows on 360px viewports (checkout, account, admin).
+- [x] **Task 3.15:** Add dynamic shipping calculation by state across all 28 states and 8 union territories.
+- [x] **Task 3.16:** Eliminate N+1 wishlist queries and add database indexes.
 
 ---
 
